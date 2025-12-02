@@ -1,6 +1,7 @@
 import 'package:evonex/screens/home_screen.dart';
 import 'package:evonex/screens/splash_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
 
@@ -8,6 +9,10 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Optionally initialize the engine:
   // await OmniVideoPlayer.ensureInitialized();
+   // Lock device orientation to portrait
+  SystemChrome.setPreferredOrientations(
+    [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown,],
+  );
   runApp(const MyApp());
 }
 

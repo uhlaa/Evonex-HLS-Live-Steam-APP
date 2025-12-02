@@ -64,12 +64,12 @@ List<Channel> channels = [
     link: "https://bein-xtra-xumo.amagi.tv/hls/amagi_hls_data_beinAAAAA-bein-xtra-xumoA/CDN/master.m3u8",
     category: "sports",
   ),
-  //  Channel(
-  //   name: "Bein Sports 1",
-  //   image: "assets/images/abudhabi1.png",
-  //   link: "https://vo-live-media.cdb.cdn.orange.com/Content/Channel/AbuDhabiSportsChannel1/HLS/index.m3u8",
-  //   category: "sports",
-  // ),
+   Channel(
+    name: "Bein Sports 1",
+    image: "assets/images/skysports6.png",
+    link: "https://a1xs.vip/700036",
+    category: "sports",
+  ),
   //  Channel(
   //   name: "Bein Sports 1",
   //   image: "assets/images/abudhabi2.png",
@@ -96,5 +96,55 @@ List<Channel> channels = [
     image: "assets/images/starjalsha.png",
     link: "http://87.255.35.150:18237", 
     category: "entertainment",
+  ),
+   Channel(
+    name: "ZEE TV",
+    image: "assets/images/zeetv.png",
+    link: "http://103.182.170.32:8888/play/a04r", 
+    category: "entertainment",
+  ),
+     Channel(
+    name: "SONY ENT",
+    image: "assets/images/sonyent.png",
+    link: "http://103.182.170.32:8888/play/a03t", 
+    category: "entertainment",
+  ),
+    Channel(
+    name: "SONY PIX",
+    image: "assets/images/sonypix.png",
+    link: "http://103.182.170.32:8888/play/a027", 
+    category: "entertainment",
+  ),
+   Channel(
+    name: "SONY PIX",
+    image: "assets/images/mbcbollywood.png",
+    link: "https://shd-gcp-live.edgenextcdn.net/live/bitmovin-mbc-bollywood/546eb40d7dcf9a209255dd2496903764/index.m3u8", 
+    category: "entertainment",
+  ),
+   Channel(
+    name: "SONY PIX",
+    image: "assets/images/starmovies.png",
+    link: "http://87.255.35.150:18301", 
+    category: "entertainment",
+  ),
+   Channel(
+    name: "SONY PIX",
+    image: "assets/images/starmoviesselect.png",
+    link: "http://87.255.35.150:18548", 
+    category: "entertainment",
+  ),
+
+  // NEWS
+     Channel(
+    name: "BBC News ASIA",
+    image: "assets/images/bbcnewsasia.png",
+    link: "https://cdn4.skygo.mn/live/disk1/BBC_News/HLSv3-FTA/BBC_News.m3u8", 
+    category: "news",
+  ),
+   Channel(
+    name: "DW NEWS",
+    image: "assets/images/dwnewseng.png",
+    link: "https://dwamdstream102.akamaized.net/hls/live/2015525/dwstream102/master.m3u8", 
+    category: "news",
   ),
 ];
