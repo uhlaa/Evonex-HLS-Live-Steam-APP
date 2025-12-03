@@ -1,330 +1,27 @@
-// // lib/screens/video_screen.dart
-// import 'package:evonex/elements/horizontal_channel.dart';
-// import 'package:evonex/models/channel_list.dart';
-// import 'package:evonex/screens/home_screen.dart';
-// import 'package:flutter/material.dart';
-// import 'package:get/get.dart';
-// import 'package:omni_video_player/omni_video_player.dart';
-// import 'package:evonex/elements/live_badge.dart';
-
-// /// Public State class name so other widgets can find it with findAncestorStateOfType<VideoScreenState>()
-// class VideoScreen extends StatefulWidget {
-//   final String url; // initial url
-//   final String? name;
-
-//   const VideoScreen({
-//     super.key,
-//     required this.url,
-//     this.name,
-//   });
-
-//   /// Helper: open by replacing current route (no stacking of multiple VideoScreens)
-//   static Future<void> openReplace(String url, {String? name}) async {
-//     try {
-//       await Get.off(() => VideoScreen(url: url, name: name));
-//     } catch (_) {
-//       // fallback: pushReplacement using Navigator
-//       final ctx = Get.context;
-//       if (ctx != null) {
-//         Navigator.of(ctx).pushReplacement(
-//           MaterialPageRoute(builder: (_) => VideoScreen(url: url, name: name)),
-//         );
-//       }
-//     }
-//   }
-
-//   @override
-//   VideoScreenState createState() => VideoScreenState();
-// }
-
-// class VideoScreenState extends State<VideoScreen> with WidgetsBindingObserver {
-//   OmniPlaybackController? _controller;
-
-//   // current stream url shown by this screen (changes when user taps another channel)
-//   late String currentUrl;
-
-//   // Schedule guard to avoid continuous setState spam
-//   bool _setStateScheduled = false;
-
-//   // Track whether we intentionally paused from UI to avoid auto-retry fighting user
-//   bool _userPaused = false;
-
-//   // Ensure only one navigation attempt from this screen at a time
-//   bool _navigatingAway = false;
-
-//   // Track if switching stream to avoid repeated rapid taps
-//   bool _switchingStream = false;
-
-//   @override
-//   void initState() {
-//     super.initState();
-//     currentUrl = widget.url;
-//     WidgetsBinding.instance.addObserver(this);
-//   }
-
-//   @override
-//   void dispose() {
-//     WidgetsBinding.instance.removeObserver(this);
-//     try {
-//       _controller?.removeListener(_update);
-//     } catch (_) {}
-//     try {
-//       _controller?.pause();
-//     } catch (_) {}
-//     try {
-//       _controller?.dispose();
-//     } catch (_) {}
-//     _controller = null;
-//     super.dispose();
-//   }
-
-//   void _update() {
-//     if (_setStateScheduled) return;
-//     _setStateScheduled = true;
-//     WidgetsBinding.instance.addPostFrameCallback((_) {
-//       if (!mounted) return;
-//       _setStateScheduled = false;
-//       setState(() {});
-//     });
-//   }
-
-//   Future<void> _cleanUpController() async {
-//     try {
-//       _controller?.removeListener(_update);
-//     } catch (_) {}
-
-//     try {
-//       await _controller?.pause();
-//     } catch (_) {}
-
-//     try {
-//       _controller?.dispose();
-//     } catch (_) {}
-
-//     _controller = null;
-//   }
-
-//   /// Public method other widgets can call to change the stream without navigation
-//   Future<void> changeStream(String newUrl) async {
-//     if (_switchingStream) return;
-//     if (newUrl.isEmpty) return;
-
-//     // If same url, ignore
-//     if (newUrl == currentUrl) return;
-
-//     _switchingStream = true;
-//     // Clean up current controller
-//     await _cleanUpController();
-
-//     // Update URL and rebuild OmniVideoPlayer (ValueKey ensures widget rebuild)
-//     setState(() {
-//       currentUrl = newUrl;
-//     });
-
-//     // small delay so OmniVideoPlayer rebuilds and onControllerCreated will create new controller
-//     await Future.delayed(const Duration(milliseconds: 120));
-//     _switchingStream = false;
-//   }
-
-//   // Intercept system lifecycle to pause/resume playback appropriately
-//   @override
-//   void didChangeAppLifecycleState(AppLifecycleState state) {
-//     if (_controller == null) return;
-//     if (state == AppLifecycleState.paused) {
-//       try {
-//         _controller?.pause();
-//       } catch (_) {}
-//     } else if (state == AppLifecycleState.resumed && !_userPaused) {
-//       try {
-//         _controller?.play();
-//       } catch (_) {}
-//     }
-//   }
-
-//   Future<bool> _onWillPop() async {
-//     // Prevent double navigation
-//     if (_navigatingAway) return false;
-//     _navigatingAway = true;
-
-//     await _cleanUpController();
-
-//     // Replace entire navigation stack with HomeScreen to avoid
-//     // accidental stacked VideoScreens in history (optional)
-//     try {
-//       Get.offAll(() => const HomeScreen(), predicate: (_) => false);
-//     } catch (_) {
-//       Navigator.of(context).pushAndRemoveUntil(
-//         MaterialPageRoute(builder: (_) => const HomeScreen()),
-//         (route) => false,
-//       );
-//     }
-
-//     return false;
-//   }
-
-//   Future<void> _handleBackTap() async {
-//     if (_navigatingAway) return;
-//     _navigatingAway = true;
-//     await _cleanUpController();
-//     try {
-//       Get.offAll(() => const HomeScreen(), predicate: (_) => false);
-//     } catch (_) {
-//       Navigator.of(context).pushAndRemoveUntil(
-//         MaterialPageRoute(builder: (_) => const HomeScreen()),
-//         (route) => false,
-//       );
-//     }
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return WillPopScope(
-//       onWillPop: _onWillPop,
-//       child: Scaffold(
-//         backgroundColor: const Color.fromARGB(250, 240, 240, 240),
-//         body: SafeArea(
-//           child: Column(
-//             children: [
-//               AspectRatio(
-//                 aspectRatio: 16 / 9,
-//                 child: Container(
-//                   color: Colors.black,
-//                   child: Stack(
-//                     children: [
-//                       // Use ValueKey(currentUrl) so changing currentUrl rebuilds the OmniVideoPlayer
-//                       Positioned.fill(
-//                         child: OmniVideoPlayer(
-//                           key: ValueKey(currentUrl),
-//                           callbacks: VideoPlayerCallbacks(
-//                             onControllerCreated: (controller) async {
-//                               try {
-//                                 _controller?.removeListener(_update);
-//                               } catch (_) {}
-//                               _controller = controller..addListener(_update);
-
-//                               // Try safe autoplay
-//                               try {
-//                                 await _controller!.play();
-//                                 // debugPrint('Auto-play requested successfully.');
-//                               } catch (e) {
-//                                 await Future.delayed(const Duration(milliseconds: 350));
-//                                 try {
-//                                   await _controller!.play();
-//                                 } catch (_) {}
-//                               }
-
-//                               _update();
-//                             },
-//                           ),
-//                           configuration: VideoPlayerConfiguration(
-//                             liveLabel: "Live",
-//                             videoSourceConfiguration: VideoSourceConfiguration.network(
-//                               videoUrl: Uri.parse(currentUrl),
-//                             ),
-//                             playerUIVisibilityOptions: const PlayerUIVisibilityOptions(
-//                               enableForwardGesture: false,
-//                               enableBackwardGesture: false,
-//                               showReplayButton: false,
-//                               showSeekBar: false,
-//                               showPlayPauseReplayButton: true,
-//                               showFullScreenButton: true,
-//                               showSwitchVideoQuality: true,
-//                               showLiveIndicator: true,
-//                               showMuteUnMuteButton: false,
-//                               fullscreenOrientation: Orientation.landscape,
-//                             ),
-//                           ),
-//                         ),
-//                       ),
-
-//                       // custom back button (top-left)
-//                       Positioned(
-//                         top: 10,
-//                         left: 10,
-//                         child: GestureDetector(
-//                           onTap: _handleBackTap,
-//                           child: Container(
-//                             padding: const EdgeInsets.all(6),
-//                             decoration: BoxDecoration(
-//                               color: Colors.black12,
-//                               borderRadius: BorderRadius.circular(50),
-//                             ),
-//                             child: const Icon(
-//                               Icons.arrow_back,
-//                               color: Colors.white,
-//                               size: 22,
-//                             ),
-//                           ),
-//                         ),
-//                       ),
-
-//                       // optional custom live badge
-//                       const Positioned(
-//                         left: 15,
-//                         bottom: 10,
-//                         child: LiveBadge(),
-//                       ),
-//                     ],
-//                   ),
-//                 ),
-//               ),
-
-//               // Channel lists (horizontal) — these will call changeStream when inside this screen
-//               Expanded(
-//                 child: SingleChildScrollView(
-//                   child: Column(
-//                     children: [
-//                       const SizedBox(height: 20),
-//                       HorizontalChannelList(
-//                         channels: channels,
-//                         category: 'sports',
-//                         title: 'Live Channels',
-//                       ),
-//                       const SizedBox(height: 20),
-//                       HorizontalChannelList(
-//                         channels: channels,
-//                         category: 'entertainment',
-//                         title: 'Live Channels',
-//                       ),
-//                       const SizedBox(height: 20),
-//                       HorizontalChannelList(
-//                         channels: channels,
-//                         category: 'News',
-//                         title: 'Live Channels',
-//                       ),
-//                       const SizedBox(height: 30),
-//                     ],
-//                   ),
-//                 ),
-//               ),
-//             ],
-//           ),
-//         ),
-//       ),
-//     );
-//   }
-// }
-// lib/screens/video_screen.dart
 import 'package:evonex/elements/horizontal_channel.dart';
 import 'package:evonex/models/channel_list.dart';
-import 'package:evonex/screens/home_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:omni_video_player/omni_video_player.dart';
+import 'package:video_player/video_player.dart';
+import 'package:chewie/chewie.dart';
 import 'package:evonex/elements/live_badge.dart';
+import 'package:flutter/services.dart';
 
 class VideoScreen extends StatefulWidget {
   final String url;
   final String? name;
-  const VideoScreen({super.key, required this.url, this.name});
+  final String? placeholderImage;
+  const VideoScreen({super.key, required this.url, this.placeholderImage, this.name});
 
   @override
   VideoScreenState createState() => VideoScreenState();
 }
 
 class VideoScreenState extends State<VideoScreen> with WidgetsBindingObserver {
-  OmniPlaybackController? _controller;
+  VideoPlayerController? _videoController;
+  ChewieController? _chewieController;
+
   late String currentUrl;
+  String? _currentPlaceholder; // <-- holds current placeholder (asset or network)
   bool _setStateScheduled = false;
   bool _userPaused = false;
   bool _navigatingAway = false;
@@ -333,28 +30,25 @@ class VideoScreenState extends State<VideoScreen> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    currentUrl = widget.url;
     WidgetsBinding.instance.addObserver(this);
+    currentUrl = widget.url;
+    _currentPlaceholder = widget.placeholderImage;
+    _initializeForUrl(currentUrl);
   }
 
-@override
-void dispose() {
-  WidgetsBinding.instance.removeObserver(this);
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
 
-  // Best-effort cleanup — do not call controller.dispose synchronously here.
-  try {
-    _controller?.removeListener(_update);
-  } catch (_) {}
-  try {
-    _controller?.pause();
-  } catch (_) {}
-  // Defer final disposal through _cleanUpController which schedules post-frame dispose.
-  _cleanUpController();
-
-  _controller = null;
-  super.dispose();
-}
-
+    try {
+      _removeControllersListeners();
+    } catch (_) {}
+    try {
+      _pauseControllers();
+    } catch (_) {}
+    _cleanUpControllers();
+    super.dispose();
+  }
 
   void _update() {
     if (_setStateScheduled) return;
@@ -366,39 +60,123 @@ void dispose() {
     });
   }
 
-  /// Idempotent cleanup used everywhere
-Future<void> _cleanUpController() async {
-  final ctrl = _controller;
-  if (ctrl == null) return;
+  Future<void> _initializeForUrl(String url) async {
+    if (url.isEmpty) return;
+    await _cleanUpControllers();
 
-  // Remove listeners synchronously so they won't emit during disposal.
-  try { ctrl.removeListener(_update); } catch (_) {}
+    final videoCtrl = VideoPlayerController.network(url,
+        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true));
 
-  // Try to pause gracefully (await if supported).
-  try { await ctrl.pause(); } catch (_) {}
+    _videoController = videoCtrl;
 
-  // Clear our reference immediately so the rest of the code won't try to use it.
-  _controller = null;
-
-  // Defer the actual dispose to the next frame to avoid disposing while
-  // inherited dependents are still registered by the framework.
-  WidgetsBinding.instance.addPostFrameCallback((_) {
     try {
-      ctrl.dispose();
-    } catch (e, st) {
-      debugPrint('Controller dispose error (deferred): $e\n$st');
+      await videoCtrl.initialize();
+    } catch (e) {
+      debugPrint('Video initialize error: $e');
     }
-  });
-}
 
-  /// Switch stream inside same screen (no navigation).
-  Future<void> changeStream(String newUrl) async {
+    // internal listener to detect play/pause and refresh UI
+    void listener() {
+      final vc = _videoController;
+      if (vc == null) return;
+      final playing = vc.value.isPlaying;
+      if (!playing && vc.value.isInitialized && vc.value.position > Duration.zero) {
+        _userPaused = true;
+      } else if (playing) {
+        _userPaused = false;
+      }
+      _update();
+    }
+
+    videoCtrl.addListener(listener);
+
+    _chewieController = ChewieController(
+      videoPlayerController: videoCtrl,
+      autoPlay: true,
+      looping: true,
+      showControls: true,
+      showOptions: false,
+      isLive: true,
+    
+      deviceOrientationsOnEnterFullScreen: [
+        DeviceOrientation.landscapeLeft,
+        DeviceOrientation.landscapeRight,
+      ],
+      deviceOrientationsAfterFullScreen: [
+        DeviceOrientation.portraitUp,
+      ],
+      allowPlaybackSpeedChanging: false,
+      allowMuting: false,
+      allowFullScreen: true,
+      additionalOptions: (context) => [],
+      // Chewie placeholder still provided (optional) — but we also show our own image layer for fade
+      // placeholder: Image.asset("assets/images/zeetv.png")
+    );
+
+    _update();
+  }
+
+  Future<void> _removeControllersListeners() async {
+    try {
+      _videoController?.removeListener(_update);
+    } catch (_) {}
+    // NOTE: we added a listener inline in _initializeForUrl; disposing the controller
+    // will remove it — we leave that to _cleanUpControllers deferred disposal.
+  }
+
+  Future<void> _pauseControllers() async {
+    try {
+      if (_videoController != null && _videoController!.value.isPlaying) {
+        await _videoController!.pause();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _cleanUpControllers() async {
+    final vctrl = _videoController;
+    final cctrl = _chewieController;
+
+    if (vctrl == null && cctrl == null) return;
+
+    try {
+      vctrl?.removeListener(_update);
+    } catch (_) {}
+
+    try {
+      await vctrl?.pause();
+    } catch (_) {}
+
+    _videoController = null;
+    _chewieController = null;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      try {
+        cctrl?.dispose();
+      } catch (e, st) {
+        debugPrint('Chewie dispose error (deferred): $e\n$st');
+      }
+      try {
+        vctrl?.dispose();
+      } catch (e, st) {
+        debugPrint('VideoController dispose error (deferred): $e\n$st');
+      }
+    });
+  }
+
+  /// Switch stream inside same screen (no navigation). Also accept an optional placeholder to update image.
+  Future<void> changeStream(String newUrl, {String? placeholderImage}) async {
     if (_switchingStream) return;
     if (newUrl.isEmpty) return;
-    if (newUrl == currentUrl) return;
+    if (newUrl == currentUrl && placeholderImage == _currentPlaceholder) return;
 
     _switchingStream = true;
-    await _cleanUpController();
+
+    // Update placeholder immediately so UI shows new image while switching
+    setState(() {
+      _currentPlaceholder = placeholderImage ?? _currentPlaceholder;
+    });
+
+    await _cleanUpControllers();
 
     if (!mounted) {
       _switchingStream = false;
@@ -409,62 +187,56 @@ Future<void> _cleanUpController() async {
       currentUrl = newUrl;
     });
 
-    // small delay so the OmniVideoPlayer rebuilds and creates new controller
+    // small delay so the rebuild completes and we can initialize
     await Future.delayed(const Duration(milliseconds: 120));
+    await _initializeForUrl(newUrl);
+
     _switchingStream = false;
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (_controller == null) return;
+    if (_videoController == null) return;
     if (state == AppLifecycleState.paused) {
       try {
-        _controller?.pause();
+        _videoController?.pause();
       } catch (_) {}
     } else if (state == AppLifecycleState.resumed && !_userPaused) {
       try {
-        _controller?.play();
+        _videoController?.play();
       } catch (_) {}
     }
   }
 
-  /// Shared handler for both system back and custom back button.
-  /// For system back (WillPopScope) we return true after cleanup and let framework pop.
   Future<bool> _handleWillPop() async {
-    // If already navigating away, allow framework to pop (prevents stuck)
     if (_navigatingAway) return true;
 
     _navigatingAway = true;
     try {
-      await _cleanUpController();
+      await _cleanUpControllers();
     } catch (e, st) {
-      debugPrint('Error cleaning controller in onWillPop: $e\n$st');
+      debugPrint('Error cleaning controllers in onWillPop: $e\n$st');
     } finally {
-      // reset guard — allow subsequent navigations if pop didn't remove screen
       _navigatingAway = false;
     }
 
-    // Returning true lets Navigator.pop happen normally (system back behavior).
     return true;
   }
 
-  /// Called by the top-left custom back button to mimic system back safely.
   Future<void> _onCustomBackPressed() async {
     if (_navigatingAway) return;
     _navigatingAway = true;
 
     try {
-      await _cleanUpController();
+      await _cleanUpControllers();
     } catch (e, st) {
-      debugPrint('Error cleaning controller on custom back: $e\n$st');
+      debugPrint('Error cleaning controllers on custom back: $e\n$st');
     }
 
     if (!mounted) return;
 
-    // Try to pop (this matches the system back). If can't pop, fallback to pushing Home.
-    final didPop = Navigator.of(context).maybePop();
-    // maybePop returns a Future<bool?> in some versions, but it's fine to not await here.
-    // Reset the guard a bit later to avoid rapid-double taps.
+    Navigator.of(context).maybePop();
+
     Future.delayed(const Duration(milliseconds: 100), () {
       if (mounted) _navigatingAway = false;
     });
@@ -472,6 +244,9 @@ Future<void> _cleanUpController() async {
 
   @override
   Widget build(BuildContext context) {
+    final chewie = _chewieController;
+    final playerReady = chewie != null && _videoController != null && _videoController!.value.isInitialized;
+
     return WillPopScope(
       onWillPop: _handleWillPop,
       child: Scaffold(
@@ -485,45 +260,46 @@ Future<void> _cleanUpController() async {
                   color: Colors.black,
                   child: Stack(
                     children: [
-                      Positioned.fill(
-                        child: OmniVideoPlayer(
-                          key: ValueKey(currentUrl),
-                          callbacks: VideoPlayerCallbacks(
-                            onControllerCreated: (controller) async {
-                              try {
-                                _controller?.removeListener(_update);
-                              } catch (_) {}
-                              _controller = controller..addListener(_update);
-
-                              try {
-                                await _controller!.play();
-                              } catch (e) {
-                                await Future.delayed(const Duration(milliseconds: 350));
-                                try {
-                                  await _controller!.play();
-                                } catch (_) {}
-                              }
-
-                              _update();
-                            },
+                      // Placeholder image layer (underneath). Fade out when player is ready.
+                      Positioned(
+                        child: Center(
+                          child: AnimatedOpacity(
+                            opacity: playerReady ? 0.0 : 1.0,
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeInOut,
+                            child: _currentPlaceholder != null
+                                ? (_currentPlaceholder!.startsWith('http')
+                                    ? Image.network(
+                                        _currentPlaceholder!,
+                                        fit: BoxFit.cover,
+                                        width: double.infinity,
+                                        height: double.infinity,
+                                      )
+                                    : Center(
+                                      child: Opacity(
+                                        opacity: 0.4,
+                                        child: Image.asset(
+                                            _currentPlaceholder!,
+                                       fit: BoxFit.fill,
+                                          width: 160,
+                                          // height: double.infinity,
+                                         
+                                          ),
+                                      ),
+                                    ))
+                                : const SizedBox.expand(child: SizedBox()),
                           ),
-                          configuration: VideoPlayerConfiguration(
-                            liveLabel: "Live",
-                            videoSourceConfiguration: VideoSourceConfiguration.network(
-                              videoUrl: Uri.parse(currentUrl),
-                            ),
-                            playerUIVisibilityOptions: const PlayerUIVisibilityOptions(
-                              enableForwardGesture: false,
-                              enableBackwardGesture: false,
-                              showReplayButton: false,
-                              showSeekBar: false,
-                              showPlayPauseReplayButton: true,
-                              showFullScreenButton: true,
-                              showSwitchVideoQuality: true,
-                              showLiveIndicator: true,
-                              showMuteUnMuteButton: false,
-                              fullscreenOrientation: Orientation.landscape,
-                            ),
+                        ),
+                      ),
+
+                      // Video player layer (on top). Fade in when ready.
+                      Positioned.fill(
+                        child: AnimatedOpacity(
+                          opacity: playerReady ? 1.0 : 0.0,
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                          child: Center(
+                            child: playerReady ? Chewie(controller: chewie!) : const SizedBox.shrink(),
                           ),
                         ),
                       ),
@@ -542,17 +318,11 @@ Future<void> _cleanUpController() async {
                             ),
                             child: const Icon(
                               Icons.arrow_back,
-                              color: Colors.white,
+                              color: Colors.white60,
                               size: 22,
                             ),
                           ),
                         ),
-                      ),
-
-                      const Positioned(
-                        left: 15,
-                        bottom: 10,
-                        child: LiveBadge(),
                       ),
                     ],
                   ),

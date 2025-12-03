@@ -97,7 +97,8 @@ class HorizontalChannelList extends StatelessWidget {
                     final state = context.findAncestorStateOfType<VideoScreenState>();
                     if (state != null) {
                       try {
-                        await state.changeStream(link);
+                        // pass channel.image so placeholder updates immediately
+                        await state.changeStream(link, placeholderImage: channel.image);
                       } catch (e) {
                         debugPrint('changeStream failed: $e');
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -109,10 +110,16 @@ class HorizontalChannelList extends StatelessWidget {
                       return;
                     }
 
-                    // Not inside VideoScreen: push a new VideoScreen normally.
+                    // Not inside VideoScreen: push a new VideoScreen and pass placeholderImage
                     try {
                       await Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => VideoScreen(url: link)),
+                        MaterialPageRoute(
+                          builder: (_) => VideoScreen(
+                            url: link,
+                            placeholderImage: channel.image,
+                            name: channel.name,
+                          ),
+                        ),
                       );
                     } catch (pushError) {
                       debugPrint('Navigator.push failed: $pushError — trying pushReplacement');
@@ -120,7 +127,13 @@ class HorizontalChannelList extends StatelessWidget {
                       // fallback: try pushReplacement instead of relying on VideoScreen.openReplace
                       try {
                         await Navigator.of(context).pushReplacement(
-                          MaterialPageRoute(builder: (_) => VideoScreen(url: link)),
+                          MaterialPageRoute(
+                            builder: (_) => VideoScreen(
+                              url: link,
+                              placeholderImage: channel.image,
+                              name: channel.name,
+                            ),
+                          ),
                         );
                       } catch (replaceError) {
                         debugPrint('pushReplacement also failed: $replaceError');

@@ -22,6 +22,7 @@ class HomeScreen extends StatelessWidget {
         title: Text('Channels', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),),
         backgroundColor: Colors.white,
         centerTitle: true,
+        automaticallyImplyLeading: false,
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -38,13 +39,14 @@ class HomeScreen extends StatelessWidget {
             return _ChannelCard(
               channel: channel,
               onTap: () {
-                Get.to(VideoScreen(url: channel.link ?? ''),);
-                // Navigator.push(
-                //   context,
-                //   MaterialPageRoute(
-                //     builder: (_) => VideoScreen(url: channel.link ?? ''),
-                //   ),
-                // );
+              Navigator.push(context, MaterialPageRoute(
+  builder: (_) => VideoScreen(
+    url: channel.link,
+    placeholderImage: channel.image,
+    name: channel.name,
+  ),
+));
+
               },
             );
           },
