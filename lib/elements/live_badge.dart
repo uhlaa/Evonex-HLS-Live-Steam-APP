@@ -40,7 +40,7 @@ class _LiveBadgeState extends State<LiveBadge>
         const Text(
           'LIVE',
           style: TextStyle(
-            color: Colors.white,
+            color: Colors.redAccent,
             fontWeight: FontWeight.bold,
             fontSize: 12,
           ),

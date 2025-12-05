@@ -1,16 +1,22 @@
 import 'package:evonex/elements/horizontal_channel.dart';
-import 'package:evonex/models/channel_list.dart';
+import 'package:evonex/models/channel.dart'; // ← your Channel model
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
-import 'package:evonex/elements/live_badge.dart';
 import 'package:flutter/services.dart';
 
 class VideoScreen extends StatefulWidget {
   final String url;
   final String? name;
   final String? placeholderImage;
-  const VideoScreen({super.key, required this.url, this.placeholderImage, this.name});
+
+  const VideoScreen({
+    super.key,
+    required this.url,
+    this.placeholderImage,
+    this.name,
+  });
 
   @override
   VideoScreenState createState() => VideoScreenState();
@@ -21,16 +27,28 @@ class VideoScreenState extends State<VideoScreen> with WidgetsBindingObserver {
   ChewieController? _chewieController;
 
   late String currentUrl;
-  String? _currentPlaceholder; // <-- holds current placeholder (asset or network)
+  String? _currentPlaceholder; // holds current placeholder (asset or network)
   bool _setStateScheduled = false;
   bool _userPaused = false;
   bool _navigatingAway = false;
   bool _switchingStream = false;
 
+  // store listener reference so we can remove it later
+  VoidCallback? _videoListener;
+
+  // 🔹 Supabase stream from channel_list (id SERIAL PRIMARY KEY)
+  late final Stream<List<Map<String, dynamic>>> _channelStream;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    _channelStream = Supabase.instance.client
+        .from('channel_list')
+        .stream(primaryKey: ['id'])
+        .order('channel_name');
+
     currentUrl = widget.url;
     _currentPlaceholder = widget.placeholderImage;
     _initializeForUrl(currentUrl);
@@ -64,31 +82,36 @@ class VideoScreenState extends State<VideoScreen> with WidgetsBindingObserver {
     if (url.isEmpty) return;
     await _cleanUpControllers();
 
-    final videoCtrl = VideoPlayerController.network(url,
-        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true));
+    final videoCtrl = VideoPlayerController.network(
+      url,
+      videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+    );
 
     _videoController = videoCtrl;
+
+    // create listener and store reference
+    _videoListener = () {
+      final vc = _videoController;
+      if (vc == null) return;
+      final playing = vc.value.isPlaying;
+      if (!playing &&
+          vc.value.isInitialized &&
+          vc.value.position > Duration.zero) {
+        _userPaused = true;
+      } else if (playing) {
+        _userPaused = false;
+      }
+      _update();
+    };
+
+    // add the listener
+    videoCtrl.addListener(_videoListener!);
 
     try {
       await videoCtrl.initialize();
     } catch (e) {
       debugPrint('Video initialize error: $e');
     }
-
-    // internal listener to detect play/pause and refresh UI
-    void listener() {
-      final vc = _videoController;
-      if (vc == null) return;
-      final playing = vc.value.isPlaying;
-      if (!playing && vc.value.isInitialized && vc.value.position > Duration.zero) {
-        _userPaused = true;
-      } else if (playing) {
-        _userPaused = false;
-      }
-      _update();
-    }
-
-    videoCtrl.addListener(listener);
 
     _chewieController = ChewieController(
       videoPlayerController: videoCtrl,
@@ -97,20 +120,15 @@ class VideoScreenState extends State<VideoScreen> with WidgetsBindingObserver {
       showControls: true,
       showOptions: false,
       isLive: true,
-    
-      deviceOrientationsOnEnterFullScreen: [
+      deviceOrientationsOnEnterFullScreen: const [
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
       ],
-      deviceOrientationsAfterFullScreen: [
-        DeviceOrientation.portraitUp,
-      ],
+      deviceOrientationsAfterFullScreen: const [DeviceOrientation.portraitUp],
       allowPlaybackSpeedChanging: false,
       allowMuting: false,
       allowFullScreen: true,
       additionalOptions: (context) => [],
-      // Chewie placeholder still provided (optional) — but we also show our own image layer for fade
-      // placeholder: Image.asset("assets/images/zeetv.png")
     );
 
     _update();
@@ -118,10 +136,11 @@ class VideoScreenState extends State<VideoScreen> with WidgetsBindingObserver {
 
   Future<void> _removeControllersListeners() async {
     try {
-      _videoController?.removeListener(_update);
+      if (_videoController != null && _videoListener != null) {
+        _videoController!.removeListener(_videoListener!);
+      }
     } catch (_) {}
-    // NOTE: we added a listener inline in _initializeForUrl; disposing the controller
-    // will remove it — we leave that to _cleanUpControllers deferred disposal.
+    _videoListener = null;
   }
 
   Future<void> _pauseControllers() async {
@@ -139,7 +158,7 @@ class VideoScreenState extends State<VideoScreen> with WidgetsBindingObserver {
     if (vctrl == null && cctrl == null) return;
 
     try {
-      vctrl?.removeListener(_update);
+      if (_videoListener != null) vctrl?.removeListener(_videoListener!);
     } catch (_) {}
 
     try {
@@ -148,7 +167,9 @@ class VideoScreenState extends State<VideoScreen> with WidgetsBindingObserver {
 
     _videoController = null;
     _chewieController = null;
+    _videoListener = null;
 
+    // dispose controllers after frame to avoid setState during build
     WidgetsBinding.instance.addPostFrameCallback((_) {
       try {
         cctrl?.dispose();
@@ -163,15 +184,17 @@ class VideoScreenState extends State<VideoScreen> with WidgetsBindingObserver {
     });
   }
 
-  /// Switch stream inside same screen (no navigation). Also accept an optional placeholder to update image.
+  /// Switch stream inside same screen (no navigation).
   Future<void> changeStream(String newUrl, {String? placeholderImage}) async {
     if (_switchingStream) return;
     if (newUrl.isEmpty) return;
-    if (newUrl == currentUrl && placeholderImage == _currentPlaceholder) return;
+    if (newUrl == currentUrl && placeholderImage == _currentPlaceholder) {
+      return;
+    }
 
     _switchingStream = true;
 
-    // Update placeholder immediately so UI shows new image while switching
+    // Update placeholder immediately
     setState(() {
       _currentPlaceholder = placeholderImage ?? _currentPlaceholder;
     });
@@ -187,7 +210,6 @@ class VideoScreenState extends State<VideoScreen> with WidgetsBindingObserver {
       currentUrl = newUrl;
     });
 
-    // small delay so the rebuild completes and we can initialize
     await Future.delayed(const Duration(milliseconds: 120));
     await _initializeForUrl(newUrl);
 
@@ -245,7 +267,10 @@ class VideoScreenState extends State<VideoScreen> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     final chewie = _chewieController;
-    final playerReady = chewie != null && _videoController != null && _videoController!.value.isInitialized;
+    final playerReady =
+        chewie != null &&
+        _videoController != null &&
+        _videoController!.value.isInitialized;
 
     return WillPopScope(
       onWillPop: _handleWillPop,
@@ -254,13 +279,14 @@ class VideoScreenState extends State<VideoScreen> with WidgetsBindingObserver {
         body: SafeArea(
           child: Column(
             children: [
+              // 🔺 VIDEO AREA
               AspectRatio(
                 aspectRatio: 16 / 9,
                 child: Container(
                   color: Colors.black,
                   child: Stack(
                     children: [
-                      // Placeholder image layer (underneath). Fade out when player is ready.
+                      // Placeholder image
                       Positioned(
                         child: Center(
                           child: AnimatedOpacity(
@@ -269,42 +295,44 @@ class VideoScreenState extends State<VideoScreen> with WidgetsBindingObserver {
                             curve: Curves.easeInOut,
                             child: _currentPlaceholder != null
                                 ? (_currentPlaceholder!.startsWith('http')
-                                    ? Image.network(
-                                        _currentPlaceholder!,
-                                        fit: BoxFit.cover,
-                                        width: double.infinity,
-                                        height: double.infinity,
-                                      )
-                                    : Center(
-                                      child: Opacity(
-                                        opacity: 0.4,
-                                        child: Image.asset(
+                                      ? Opacity(
+                                          opacity: 0.4,
+                                          child: Image.network(
                                             _currentPlaceholder!,
-                                       fit: BoxFit.fill,
-                                          width: 160,
-                                          // height: double.infinity,
-                                         
+                                            fit: BoxFit.fill,
+                                            width: 160,
                                           ),
-                                      ),
-                                    ))
-                                : const SizedBox.expand(child: SizedBox()),
+                                        )
+                                      : Center(
+                                          child: Opacity(
+                                            opacity: 0.4,
+                                            child: Image.asset(
+                                              _currentPlaceholder!,
+                                              fit: BoxFit.fill,
+                                              width: 160,
+                                            ),
+                                          ),
+                                        ))
+                                : const SizedBox.expand(),
                           ),
                         ),
                       ),
 
-                      // Video player layer (on top). Fade in when ready.
+                      // Video player
                       Positioned.fill(
                         child: AnimatedOpacity(
                           opacity: playerReady ? 1.0 : 0.0,
                           duration: const Duration(milliseconds: 300),
                           curve: Curves.easeInOut,
                           child: Center(
-                            child: playerReady ? Chewie(controller: chewie!) : const SizedBox.shrink(),
+                            child: playerReady
+                                ? Chewie(controller: chewie!)
+                                : const SizedBox.shrink(),
                           ),
                         ),
                       ),
 
-                      // custom back button (uses same safe logic)
+                      // Custom back button
                       Positioned(
                         top: 10,
                         left: 10,
@@ -329,31 +357,45 @@ class VideoScreenState extends State<VideoScreen> with WidgetsBindingObserver {
                 ),
               ),
 
+              // 🔻 CHANNEL LISTS (from channel_list datatable)
               Expanded(
-                child: SingleChildScrollView(
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 20),
-                      HorizontalChannelList(
-                        channels: channels,
-                        category: 'sports',
-                        title: 'Live Channels',
+                child: StreamBuilder<List<Map<String, dynamic>>>(
+                  stream: _channelStream,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Text(
+                          'Error loading channels: ${snapshot.error}',
+                          textAlign: TextAlign.center,
+                        ),
+                      );
+                    }
+
+                    final data = snapshot.data ?? [];
+
+                    // Map raw rows → Channel model (adjust names if needed)
+                    final allChannels = data
+                        .map((row) => Channel.fromMap(row))
+                        .toList();
+
+                    return SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          const SizedBox(height: 20),
+
+                          HorizontalChannelList(
+                            channels: allChannels,
+                            category: 'sports',
+                            title: 'Live Channels',
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 20),
-                      HorizontalChannelList(
-                        channels: channels,
-                        category: 'entertainment',
-                        title: 'Live Channels',
-                      ),
-                      const SizedBox(height: 20),
-                      HorizontalChannelList(
-                        channels: channels,
-                        category: 'News',
-                        title: 'Live Channels',
-                      ),
-                      const SizedBox(height: 30),
-                    ],
-                  ),
+                    );
+                  },
                 ),
               ),
             ],

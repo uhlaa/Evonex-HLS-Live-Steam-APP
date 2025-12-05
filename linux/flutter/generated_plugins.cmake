@@ -3,6 +3,8 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  gtk
+  url_launcher_linux
   volume_controller
 )
 

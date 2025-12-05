@@ -44,6 +44,9 @@ dependencies:
   get: ^4.7.3
   video_player: ^2.10.1
   http: ^1.6.0
+  supabase: ^2.10.0
+  supabase_flutter: ^2.5.0
+
 
 dev_dependencies:
   flutter_test:
