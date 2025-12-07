@@ -1,10 +1,25 @@
+
 import 'package:evonex/elements/horizontal_channel.dart';
+
 import 'package:evonex/models/channel.dart'; // ← your Channel model
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 import 'package:flutter/services.dart';
+
+class PiPManager {
+  static const MethodChannel _channel = MethodChannel('pip_channel');
+
+  static Future<void> enterPiP() async {
+    try {
+      await _channel.invokeMethod('enterPiP');
+    } on PlatformException catch (e) {
+      debugPrint('PiP error: $e');
+    }
+  }
+}
+
 
 class VideoScreen extends StatefulWidget {
   final String url;
@@ -118,7 +133,7 @@ class VideoScreenState extends State<VideoScreen> with WidgetsBindingObserver {
       autoPlay: true,
       looping: true,
       showControls: true,
-      showOptions: false,
+      showOptions: true,
       isLive: true,
       deviceOrientationsOnEnterFullScreen: const [
         DeviceOrientation.landscapeLeft,
@@ -129,6 +144,8 @@ class VideoScreenState extends State<VideoScreen> with WidgetsBindingObserver {
       allowMuting: false,
       allowFullScreen: true,
       additionalOptions: (context) => [],
+      useRootNavigator: false,
+ 
     );
 
     _update();
@@ -332,26 +349,51 @@ class VideoScreenState extends State<VideoScreen> with WidgetsBindingObserver {
                         ),
                       ),
 
-                      // Custom back button
-                      Positioned(
-                        top: 10,
-                        left: 10,
-                        child: GestureDetector(
-                          onTap: _onCustomBackPressed,
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: Colors.black12,
-                              borderRadius: BorderRadius.circular(50),
-                            ),
-                            child: const Icon(
-                              Icons.arrow_back,
-                              color: Colors.white60,
-                              size: 22,
-                            ),
-                          ),
-                        ),
-                      ),
+                    //   Custom back button
+//                     //  Custom back button (top-left)
+// Positioned(
+//   top: 10,
+//   left: 10,
+//   child: GestureDetector(
+//     onTap: _onCustomBackPressed,
+//     child: Container(
+//       padding: const EdgeInsets.all(6),
+//       decoration: BoxDecoration(
+//         color: Colors.black12,
+//         borderRadius: BorderRadius.circular(50),
+//       ),
+//       child: const Icon(
+//         Icons.arrow_back,
+//         color: Colors.white60,
+//         size: 22,
+//       ),
+//     ),
+//   ),
+// ),
+
+// // PiP button (top-right)
+// Positioned(
+//   top: 10,
+//   right: 10,
+//   child: GestureDetector(
+//     onTap: () {
+//       PiPManager.enterPiP();
+//     },
+//     child: Container(
+//       padding: const EdgeInsets.all(6),
+//       decoration: BoxDecoration(
+//         color: Colors.black12,
+//         borderRadius: BorderRadius.circular(50),
+//       ),
+//       child: const Icon(
+//         Icons.picture_in_picture_alt_outlined,
+//         color: Colors.white60,
+//         size: 22,
+//       ),
+//     ),
+//   ),
+// ),
+
                     ],
                   ),
                 ),
@@ -385,8 +427,13 @@ class VideoScreenState extends State<VideoScreen> with WidgetsBindingObserver {
                     return SingleChildScrollView(
                       child: Column(
                         children: [
+                          // const SizedBox(height: 20),
+                          // NewsTickerText(
+                          //   message:
+                          //       "← Streams may be unstable due to source issues. If this channel isn’t working, please report it. সোর্স সমস্যার কারণে স্ট্রিম অনির্ভরযোগ্য হতে পারে। যদি চ্যানেলটি না চলে, দয়া করে রিপোর্ট করুন। "
+                             
+                          // ),
                           const SizedBox(height: 20),
-
                           HorizontalChannelList(
                             channels: allChannels,
                             category: 'sports',
