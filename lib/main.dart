@@ -1,5 +1,6 @@
 import 'package:evonex/home_screens.dart';
 import 'package:evonex/screens/home_screen.dart';
+import 'package:evonex/screens/match_home_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -33,7 +34,7 @@ class MyApp extends StatelessWidget {
       title: 'HLS Player',
       theme: ThemeData.dark(),
       debugShowCheckedModeBanner: false,
-      home: HomeScreens(),
+      home: MatchHomeScreen(),
     );
   }
 }

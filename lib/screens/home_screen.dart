@@ -33,7 +33,7 @@ class _ALLChannelScreenState extends State<ALLChannelScreen> {
         ),
         backgroundColor: Colors.white,
         centerTitle: true,
-        automaticallyImplyLeading: false,
+        // automaticallyImplyLeading: false,
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
         stream: _channelStream,
