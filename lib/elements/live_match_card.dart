@@ -42,6 +42,9 @@ class LiveMatchCard extends StatefulWidget {
   /// ডিফল্ট false — যার মানে card কখনই নিজে থেকে hide করবে না।
   final bool hideWhenEnded;
 
+  /// Optional debug prints for local testing
+  final bool debugLogs;
+
   const LiveMatchCard({
     super.key,
     required this.matchName,
@@ -53,6 +56,7 @@ class LiveMatchCard extends StatefulWidget {
     this.isLive = false,
     this.onTap,
     this.hideWhenEnded = false,
+    this.debugLogs = false,
   });
 
   @override
@@ -62,6 +66,10 @@ class LiveMatchCard extends StatefulWidget {
 class _LiveMatchCardState extends State<LiveMatchCard> {
   Timer? _liveTimer;
   bool _timeBasedLive = false; // ⬅ time diye live check
+
+  /// How often we re-evaluate time-based live state.
+  /// Keep 30s for production; while debugging you can set lower via edit.
+  static const Duration _defaultCheckInterval = Duration(seconds: 30);
 
   @override
   void initState() {
@@ -73,7 +81,7 @@ class _LiveMatchCardState extends State<LiveMatchCard> {
   @override
   void didUpdateWidget(covariant LiveMatchCard oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // if start/end changed, re-evaluate
+    // if start/end changed, re-evaluate and restart timer
     if (oldWidget.matchStartTime != widget.matchStartTime ||
         oldWidget.matchEndTime != widget.matchEndTime ||
         oldWidget.isLive != widget.isLive ||
@@ -92,8 +100,8 @@ class _LiveMatchCardState extends State<LiveMatchCard> {
   void _startLiveTimer() {
     _liveTimer?.cancel();
 
-    // 30 sec por por check korbo – beshi frequent lagle 5 sec o dite paro
-    _liveTimer = Timer.periodic(const Duration(seconds: 30), (timer) {
+    // 30 sec por por check korbo – testing-e choto korte paro.
+    _liveTimer = Timer.periodic(_defaultCheckInterval, (timer) {
       if (!mounted) {
         timer.cancel();
         return;
@@ -108,13 +116,23 @@ class _LiveMatchCardState extends State<LiveMatchCard> {
     final startUtc = widget.matchStartTime.toUtc();
     final endUtc = widget.matchEndTime.toUtc();
 
-    // Consider inclusive window: match is live if now >= start && now <= end
-    final isNowLive = !(nowUtc.isBefore(startUtc) || nowUtc.isAfter(endUtc));
+    // inclusive: now >= start && now <= end
+    final isNowLive = (nowUtc.isAtSameMomentAs(startUtc) || nowUtc.isAfter(startUtc)) &&
+        (nowUtc.isAtSameMomentAs(endUtc) || nowUtc.isBefore(endUtc));
+
+    if (widget.debugLogs) {
+      debugPrint('LiveMatchCard.debug -> nowUtc: $nowUtc');
+      debugPrint('LiveMatchCard.debug -> startUtc: $startUtc');
+      debugPrint('LiveMatchCard.debug -> endUtc: $endUtc');
+      debugPrint('LiveMatchCard.debug -> isNowLive: $isNowLive widget.isLive: ${widget.isLive}');
+    }
 
     if (isNowLive != _timeBasedLive) {
-      setState(() {
-        _timeBasedLive = isNowLive;
-      });
+      if (mounted) {
+        setState(() {
+          _timeBasedLive = isNowLive;
+        });
+      }
     }
   }
 
@@ -145,13 +163,6 @@ class _LiveMatchCardState extends State<LiveMatchCard> {
     return "$hour:$minute $suffix";
   }
 
-  /// Fallback: 14-12-2025 · 8:30 PM
-  String _formatDateTime(DateTime dt) {
-    final date = _formatDate(dt);
-    final time = _formatTime(dt);
-    return "$date · $time";
-  }
-
   /// TODAY / TOMORROW / FULL DATE / MATCH ENDED
   String _statusText() {
     // jodi live hoy (DB ba time diye), text lagbe na
@@ -162,7 +173,7 @@ class _LiveMatchCardState extends State<LiveMatchCard> {
 
     // If match already ended, show "MATCH ENDED" with end time.
     if (nowUtc.isAfter(endUtc)) {
-      return "MATCH ENDED}";
+      return "MATCH ENDED";
     }
 
     final now = DateTime.now();
@@ -182,14 +193,18 @@ class _LiveMatchCardState extends State<LiveMatchCard> {
       return "TOMORROW · $timeText";
     } else {
       // onno kono din
-      return _formatDateTime(start);
+      return "${_formatDateTime(start)}";
     }
+  }
+
+  String _formatDateTime(DateTime dt) {
+    final date = _formatDate(dt);
+    final time = _formatTime(dt);
+    return "$date · $time";
   }
 
   bool get _isActuallyLive {
     // Respect DB's isLive flag OR the time-based live check.
-    // This lets an external system force live=true while still returning to false
-    // automatically after end time (because time-based will go false).
     return widget.isLive || _timeBasedLive;
   }
 
@@ -338,8 +353,7 @@ class _TeamBlock extends StatelessWidget {
               : Image.network(
                   logoUrl,
                   fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) =>
-                      const Icon(Icons.broken_image),
+                  errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
                 ),
         ),
         const SizedBox(height: 6),

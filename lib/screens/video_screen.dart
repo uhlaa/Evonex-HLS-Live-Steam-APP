@@ -349,50 +349,8 @@ class VideoScreenState extends State<VideoScreen> with WidgetsBindingObserver {
                         ),
                       ),
 
-                    //   Custom back button
-//                     //  Custom back button (top-left)
-// Positioned(
-//   top: 10,
-//   left: 10,
-//   child: GestureDetector(
-//     onTap: _onCustomBackPressed,
-//     child: Container(
-//       padding: const EdgeInsets.all(6),
-//       decoration: BoxDecoration(
-//         color: Colors.black12,
-//         borderRadius: BorderRadius.circular(50),
-//       ),
-//       child: const Icon(
-//         Icons.arrow_back,
-//         color: Colors.white60,
-//         size: 22,
-//       ),
-//     ),
-//   ),
-// ),
 
-// // PiP button (top-right)
-// Positioned(
-//   top: 10,
-//   right: 10,
-//   child: GestureDetector(
-//     onTap: () {
-//       PiPManager.enterPiP();
-//     },
-//     child: Container(
-//       padding: const EdgeInsets.all(6),
-//       decoration: BoxDecoration(
-//         color: Colors.black12,
-//         borderRadius: BorderRadius.circular(50),
-//       ),
-//       child: const Icon(
-//         Icons.picture_in_picture_alt_outlined,
-//         color: Colors.white60,
-//         size: 22,
-//       ),
-//     ),
-//   ),
-// ),
+
 
                     ],
                   ),

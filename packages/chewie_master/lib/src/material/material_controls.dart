@@ -159,11 +159,18 @@ class _MaterialControlsState extends State<MaterialControls>
                       Navigator.of(context).maybePop();
                     }
                   },
-                  child:  Icon(
-                      Icons.arrow_back,
-                      color: Colors.white,
-                      size: 22,
-                    ),
+                  child: Container(
+      padding: const EdgeInsets.all(6),
+      decoration: BoxDecoration(
+        color: Colors.black12,
+        borderRadius: BorderRadius.circular(50),
+      ),
+      child: const Icon(
+        Icons.arrow_back,
+        color: Colors.white60,
+        size: 22,
+      ),
+    ),
                  
                 ),
 

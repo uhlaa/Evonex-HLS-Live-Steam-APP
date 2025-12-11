@@ -51,10 +51,10 @@
 //           ),
 //         ),
 //         child: Center(
-//           child: SvgPicture.asset(
-//             'assets/images/evonexlogo1.svg', // <-- update if your asset path differs
-//             height: 40,
-//           ),
+//           // child: SvgPicture.asset(
+//           //   'assets/images/evonexlogo1.svg', // <-- update if your asset path differs
+//           //   height: 40,
+//           // ),
 //         ),
 //       ),
 //     );
