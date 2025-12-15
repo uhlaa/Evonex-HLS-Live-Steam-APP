@@ -1,9 +1,11 @@
 import 'package:evonex/home_screens.dart';
 import 'package:evonex/screens/home_screen.dart';
 import 'package:evonex/screens/match_home_screen.dart';
+import 'package:evonex/theme/theme_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 
@@ -22,7 +24,17 @@ Future<void> main() async {
     DeviceOrientation.portraitDown,
   ]);
 
-  runApp(const MyApp());
+    runApp(
+    MultiProvider(
+      providers: [
+     
+
+        // ThemeProvider (you said you already have this file)
+        ChangeNotifierProvider<ThemeProvider>(create: (_) => ThemeProvider()),
+      ],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -30,9 +42,10 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+      final themeProvider = Provider.of<ThemeProvider>(context);
     return GetMaterialApp(
       title: 'HLS Player',
-      theme: ThemeData.dark(),
+      theme: themeProvider.themeData,
       debugShowCheckedModeBanner: false,
       home: MatchHomeScreen(),
     );

@@ -130,6 +130,7 @@ class VideoScreenState extends State<VideoScreen> with WidgetsBindingObserver {
 
     _chewieController = ChewieController(
       videoPlayerController: videoCtrl,
+      allowedScreenSleep: false,
       autoPlay: true,
       looping: true,
       showControls: true,
@@ -292,15 +293,18 @@ class VideoScreenState extends State<VideoScreen> with WidgetsBindingObserver {
     return WillPopScope(
       onWillPop: _handleWillPop,
       child: Scaffold(
-        backgroundColor: const Color.fromARGB(250, 240, 240, 240),
+       backgroundColor: Theme.of(context).colorScheme.surface,
         body: SafeArea(
+          
           child: Column(
             children: [
               // 🔺 VIDEO AREA
               AspectRatio(
                 aspectRatio: 16 / 9,
+                
                 child: Container(
                   color: Colors.black,
+                  
                   child: Stack(
                     children: [
                       // Placeholder image
@@ -395,6 +399,24 @@ class VideoScreenState extends State<VideoScreen> with WidgetsBindingObserver {
                           HorizontalChannelList(
                             channels: allChannels,
                             category: 'sports',
+                            title: 'Live Channels',
+                          ),
+                          const SizedBox(height: 15),
+                          HorizontalChannelList(
+                            channels: allChannels,
+                            category: 'Entertainment',
+                            title: 'Live Channels',
+                          ),
+                          const SizedBox(height: 15),
+                          HorizontalChannelList(
+                            channels: allChannels,
+                            category: 'News',
+                            title: 'Live Channels',
+                          ),
+                          const SizedBox(height: 15),
+                          HorizontalChannelList(
+                            channels: allChannels,
+                            category: 'kids',
                             title: 'Live Channels',
                           ),
                         ],

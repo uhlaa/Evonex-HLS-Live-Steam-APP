@@ -70,10 +70,10 @@ class _HorizontalChannelListState extends State<HorizontalChannelList> {
       padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Text(
         headerText,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 16,
           fontWeight: FontWeight.bold,
-          color: Colors.black,
+          color: Theme.of(context).colorScheme.inversePrimary,
         ),
       ),
     );

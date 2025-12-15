@@ -219,9 +219,9 @@ class _LiveMatchCardState extends State<LiveMatchCard> {
 
     return Text(
       text.toUpperCase(),
-      style: const TextStyle(
+      style: TextStyle(
         fontSize: 11,
-        color: Colors.black87,
+        color: Theme.of(context).colorScheme.inversePrimary,
         fontWeight: FontWeight.w500,
       ),
     );
@@ -243,7 +243,7 @@ class _LiveMatchCardState extends State<LiveMatchCard> {
         margin: const EdgeInsets.symmetric(vertical: 8),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.tertiary,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -268,10 +268,10 @@ class _LiveMatchCardState extends State<LiveMatchCard> {
                     children: [
                       Text(
                         widget.matchName.toUpperCase(),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w900,
-                          color: Colors.black87,
+                          color: Theme.of(context).colorScheme.inversePrimary,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -283,7 +283,7 @@ class _LiveMatchCardState extends State<LiveMatchCard> {
                             widget.matchCategories!.toUpperCase(),
                             style: TextStyle(
                               fontSize: 11,
-                              color: Colors.grey.shade600,
+                              color: Theme.of(context).colorScheme.inverseSurface,
                               fontWeight: FontWeight.w500,
                             ),
                             overflow: TextOverflow.ellipsis,
@@ -307,14 +307,14 @@ class _LiveMatchCardState extends State<LiveMatchCard> {
                     child: _TeamBlock(team: widget.teamA),
                   ),
                 ),
-                const Padding(
+                Padding(
                   padding: EdgeInsets.symmetric(horizontal: 20),
                   child: Text(
                     'VS',
                     style: TextStyle(
                       fontSize: 26,
                       fontWeight: FontWeight.bold,
-                      color: Colors.black87,
+                      color: Theme.of(context).colorScheme.inversePrimary,
                     ),
                   ),
                 ),
@@ -360,10 +360,10 @@ class _TeamBlock extends StatelessWidget {
         Text(
           team.name.toUpperCase(),
           textAlign: TextAlign.center,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: Colors.black87,
+            color: Theme.of(context).colorScheme.inversePrimary,
           ),
         ),
       ],

@@ -44,7 +44,7 @@ class _MatchCategoryTabsState extends State<MatchCategoryTabs> {
       margin: const EdgeInsets.only(top: 16, bottom: 10, left: 16, right: 16),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: const Color(0xFFE5E5E5), // light grey background
+        color:  Theme.of(context).colorScheme.tertiary,
         borderRadius: BorderRadius.circular(15),
       ),
       child: Row(
@@ -69,7 +69,7 @@ class _MatchCategoryTabsState extends State<MatchCategoryTabs> {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
-                    color: isSelected ? Colors.white : Colors.black87,
+                    color: isSelected ? Colors.white :Theme.of(context).colorScheme.inversePrimary,
                   ),
                 ),
               ),

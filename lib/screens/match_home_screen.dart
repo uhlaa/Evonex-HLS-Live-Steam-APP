@@ -2,6 +2,7 @@
 
 import 'package:evonex/elements/live_match_card.dart';
 import 'package:evonex/elements/match_tab.dart';
+import 'package:evonex/elements/my_drawer.dart';
 import 'package:evonex/screens/home_screen.dart';
 import 'package:evonex/screens/video_screen.dart';
 import 'package:flutter/material.dart';
@@ -91,60 +92,86 @@ class _MatchHomeScreenState extends State<MatchHomeScreen> {
   ///  - time-only string (e.g. "04:30:00" or "12:30 AM") stored in DB as time without date.
   /// If time-only is provided, it uses the startUtc's local date (and adds 1 day if end <= start).
   DateTime buildEndUtcUsingStartLocal(DateTime startUtc, dynamic endRaw) {
-    // fallback: 3 hours after start (UTC)
-    if (endRaw == null) return startUtc.add(const Duration(hours: 3));
-
-    // 1) if endRaw is a full timestamp, parse it and use (normalize cross-day)
-    try {
-      if (endRaw is DateTime) {
-        final dt = endRaw.toUtc();
-        return dt.isAfter(startUtc) ? dt : dt.add(const Duration(days: 1));
-      }
-      final parsed = DateTime.tryParse(endRaw.toString());
-      if (parsed != null) {
-        final dt = parsed.toUtc();
-        return dt.isAfter(startUtc) ? dt : dt.add(const Duration(days: 1));
-      }
-    } catch (_) {}
-
-    // 2) Otherwise interpret endRaw as a local time string (same local zone as start).
-    final startLocal = startUtc.toLocal();
-    final localDate = DateTime(startLocal.year, startLocal.month, startLocal.day);
-
-    String s = endRaw.toString().trim();
-
-    // parse "12:30 AM/PM" or "hh:mm[:ss] am/pm"
-    final ampmMatch = RegExp(r'^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)$', caseSensitive: false).firstMatch(s);
-    if (ampmMatch != null) {
-      int h = int.parse(ampmMatch.group(1)!);
-      final int min = int.parse(ampmMatch.group(2)!);
-      final int sec = ampmMatch.group(3) != null ? int.parse(ampmMatch.group(3)!) : 0;
-      final isPm = ampmMatch.group(4)!.toLowerCase() == 'pm';
-      if (h == 12) {
-        h = isPm ? 12 : 0;
-      } else if (isPm) {
-        h += 12;
-      }
-
-      DateTime candidateLocal = DateTime(localDate.year, localDate.month, localDate.day, h, min, sec);
-      if (!candidateLocal.isAfter(startLocal)) candidateLocal = candidateLocal.add(const Duration(days: 1));
-      return candidateLocal.toUtc();
-    }
-
-    // parse plain "HH:mm" or "HH:mm:ss"
-    final parts = s.split(':').map((p) => int.tryParse(p) ?? 0).toList();
-    if (parts.isNotEmpty) {
-      final h = parts[0];
-      final m = parts.length > 1 ? parts[1] : 0;
-      final sec = parts.length > 2 ? parts[2] : 0;
-      DateTime candidateLocal = DateTime(localDate.year, localDate.month, localDate.day, h, m, sec);
-      if (!candidateLocal.isAfter(startLocal)) candidateLocal = candidateLocal.add(const Duration(days: 1));
-      return candidateLocal.toUtc();
-    }
-
-    // final fallback
-    return startUtc.add(const Duration(hours: 3));
+  // ❌ no fixed fallback anymore
+  if (endRaw == null) {
+    // end time না থাকলে start time ই ধরে রাখবো
+    return startUtc;
   }
+
+  // 1) full timestamp (ISO / DateTime)
+  try {
+    if (endRaw is DateTime) {
+      final dt = endRaw.toUtc();
+      return dt.isAfter(startUtc) ? dt : dt.add(const Duration(days: 1));
+    }
+
+    final parsed = DateTime.tryParse(endRaw.toString());
+    if (parsed != null) {
+      final dt = parsed.toUtc();
+      return dt.isAfter(startUtc) ? dt : dt.add(const Duration(days: 1));
+    }
+  } catch (_) {}
+
+  // 2) time-only string (HH:mm / HH:mm:ss / AM-PM)
+  final startLocal = startUtc.toLocal();
+  final localDate =
+      DateTime(startLocal.year, startLocal.month, startLocal.day);
+
+  final s = endRaw.toString().trim();
+
+  // AM / PM format
+  final ampmMatch = RegExp(
+    r'^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)$',
+    caseSensitive: false,
+  ).firstMatch(s);
+
+  if (ampmMatch != null) {
+    int h = int.parse(ampmMatch.group(1)!);
+    final m = int.parse(ampmMatch.group(2)!);
+    final sec =
+        ampmMatch.group(3) != null ? int.parse(ampmMatch.group(3)!) : 0;
+
+    final isPm = ampmMatch.group(4)!.toLowerCase() == 'pm';
+
+    if (h == 12) {
+      h = isPm ? 12 : 0;
+    } else if (isPm) {
+      h += 12;
+    }
+
+    var candidateLocal =
+        DateTime(localDate.year, localDate.month, localDate.day, h, m, sec);
+
+    if (!candidateLocal.isAfter(startLocal)) {
+      candidateLocal = candidateLocal.add(const Duration(days: 1));
+    }
+
+    return candidateLocal.toUtc();
+  }
+
+  // HH:mm / HH:mm:ss
+  final parts = s.split(':').map((p) => int.tryParse(p) ?? 0).toList();
+  if (parts.isNotEmpty) {
+    var candidateLocal = DateTime(
+      localDate.year,
+      localDate.month,
+      localDate.day,
+      parts[0],
+      parts.length > 1 ? parts[1] : 0,
+      parts.length > 2 ? parts[2] : 0,
+    );
+
+    if (!candidateLocal.isAfter(startLocal)) {
+      candidateLocal = candidateLocal.add(const Duration(days: 1));
+    }
+
+    return candidateLocal.toUtc();
+  }
+
+  // ❌ no fallback
+  return startUtc;
+}
+
 
   Future<void> _openChannelById(int channelId) async {
     try {
@@ -200,13 +227,15 @@ class _MatchHomeScreenState extends State<MatchHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F4F4),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor:Theme.of(context).colorScheme.surface,
+        
         title: SvgPicture.asset(
           'assets/images/golazos.svg',
           height: 28,
         ),
+        
         centerTitle: true,
         actions: [
           IconButton(
@@ -217,6 +246,7 @@ class _MatchHomeScreenState extends State<MatchHomeScreen> {
           )
         ],
       ),
+      drawer: const MyDrawer(),
       body: Column(
         children: [
           MatchCategoryTabs(

@@ -25,7 +25,7 @@ class _ALLChannelScreenState extends State<ALLChannelScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color.fromARGB(250, 240, 240, 240),
+      backgroundColor: Theme.of(context).colorScheme.secondary,
       appBar: AppBar(
         title: const Text(
           'Channels',
