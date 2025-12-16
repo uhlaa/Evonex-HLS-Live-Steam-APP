@@ -1,39 +1,53 @@
-// lib/screens/home_screen.dart
-
-import 'package:evonex/controller/channel_repository.dart';
+// lib/screens/category_channels_screen.dart
 import 'package:flutter/material.dart';
-
-
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'video_screen.dart';
 
-class ALLChannelScreen extends StatefulWidget {
-  const ALLChannelScreen({super.key});
+class CategoryChannelsScreen extends StatefulWidget {
+  final String category; // sports / news / entertainment / kids
+
+  const CategoryChannelsScreen({
+    super.key,
+    required this.category,
+  });
 
   @override
-  State<ALLChannelScreen> createState() => _ALLChannelScreenState();
+  State<CategoryChannelsScreen> createState() =>
+      _CategoryChannelsScreenState();
 }
 
-class _ALLChannelScreenState extends State<ALLChannelScreen> {
+class _CategoryChannelsScreenState
+    extends State<CategoryChannelsScreen> {
   late final Stream<List<Map<String, dynamic>>> _channelStream;
 
   @override
   void initState() {
     super.initState();
-    _channelStream = ChannelRepository.streamChannels();
+
+    _channelStream = Supabase.instance.client
+        .from('channel_list')
+        .stream(primaryKey: ['id'])
+        .order('channel_name');
+  }
+
+  String _capitalize(String text) {
+    if (text.isEmpty) return text;
+    return text[0].toUpperCase() + text.substring(1);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.surface,
+      backgroundColor: const Color(0xFFF5F5F5),
       appBar: AppBar(
-           backgroundColor: Theme.of(context).colorScheme.tertiary,
-        centerTitle: true,
-        title: const Text(
-          'Channels',
-          style: TextStyle(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        iconTheme: const IconThemeData(color: Colors.black),
+        title: Text(
+          '${_capitalize(widget.category)} Channel',
+          style: const TextStyle(
+            color: Colors.black,
             fontWeight: FontWeight.bold,
-            color: Colors.black87,
           ),
         ),
       ),
@@ -50,13 +64,29 @@ class _ALLChannelScreenState extends State<ALLChannelScreen> {
             );
           }
 
-          final channels = snapshot.data!;
+          /// 🔥 CATEGORY FILTER
+          final channels = snapshot.data!.where((m) {
+            final cat = (m['channel_categories'] ?? '')
+                .toString()
+                .toLowerCase();
+            return cat == widget.category.toLowerCase();
+          }).toList();
+
+          if (channels.isEmpty) {
+            return Center(
+              child: Text(
+                'No channels in ${widget.category}',
+                style: const TextStyle(color: Colors.grey),
+              ),
+            );
+          }
 
           return Padding(
             padding: const EdgeInsets.all(16),
             child: GridView.builder(
               itemCount: channels.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              gridDelegate:
+                  const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
                 crossAxisSpacing: 12,
                 mainAxisSpacing: 12,
@@ -68,27 +98,14 @@ class _ALLChannelScreenState extends State<ALLChannelScreen> {
                 return _ChannelCard(
                   channelMap: channel,
                   onTap: () {
-                    final url =
-                        channel['channel_link']?.toString() ?? '';
-
-                    if (url.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Channel link not available'),
-                        ),
-                      );
-                      return;
-                    }
-
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (_) => VideoScreen(
-                          url: url,
+                          url: channel['channel_link']?.toString() ?? '',
                           placeholderImage:
                               channel['channel_image']?.toString(),
-                          name:
-                              channel['channel_name']?.toString(),
+                          name: channel['channel_name']?.toString(),
                         ),
                       ),
                     );
@@ -130,10 +147,11 @@ class _ChannelCard extends StatelessWidget {
   }
 
   Widget _buildImage() {
-    final raw = channelMap['channel_image'];
-    final image = raw == null ? '' : raw.toString().trim();
+    final rawImage = channelMap['channel_image'];
+    final image =
+        rawImage == null ? null : rawImage.toString().trim();
 
-    if (image.isEmpty) {
+    if (image == null || image.isEmpty) {
       return const Center(
         child: Icon(Icons.tv, size: 40, color: Colors.black26),
       );
@@ -146,13 +164,9 @@ class _ChannelCard extends StatelessWidget {
         ? Image.network(
             image,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => const Center(
-              child: Icon(Icons.broken_image, size: 36),
-            ),
+            errorBuilder: (_, __, ___) =>
+                const Icon(Icons.broken_image),
           )
-        : Image.asset(
-            image,
-            fit: BoxFit.cover,
-          );
+        : Image.asset(image, fit: BoxFit.cover);
   }
 }

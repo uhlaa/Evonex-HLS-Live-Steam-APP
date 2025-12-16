@@ -1,14 +1,16 @@
 // lib/screens/match_home_screen.dart
 
-import 'package:evonex/elements/live_match_card.dart';
-import 'package:evonex/elements/match_tab.dart';
-import 'package:evonex/elements/my_drawer.dart';
-import 'package:evonex/screens/home_screen.dart';
-import 'package:evonex/screens/video_screen.dart';
+import 'package:evonex/controller/match_repository.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/svg.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+
+
+import '../elements/live_match_card.dart';
+import '../elements/match_tab.dart';
+import '../elements/my_drawer.dart';
+import '../screens/home_screen.dart';
+import '../screens/video_screen.dart';
 
 class MatchHomeScreen extends StatefulWidget {
   const MatchHomeScreen({super.key});
@@ -18,8 +20,7 @@ class MatchHomeScreen extends StatefulWidget {
 }
 
 class _MatchHomeScreenState extends State<MatchHomeScreen> {
-  // keep stream type loose to avoid cast problems with Supabase realtime payloads
-  late final Stream _matchStream;
+  late final Stream<List<Map<String, dynamic>>> _matchStream;
   late final Future<Map<int, Team>> _teamMapFuture;
 
   /// ALL / CRICKET / FOOTBALL
@@ -28,175 +29,110 @@ class _MatchHomeScreenState extends State<MatchHomeScreen> {
   @override
   void initState() {
     super.initState();
-
-    // live_match table stream (primaryKey ensures realtime diffing)
-    _matchStream = Supabase.instance.client.from('live_match').stream(primaryKey: ['id']);
-
-    // load all teams from `team` table
+    _matchStream = MatchRepository.streamMatches();
     _teamMapFuture = _loadTeams();
   }
 
-  /// team table: id, name, logo_url, league
+  // ------------------------------------------------------------
+  // TEAM LOAD
+  // ------------------------------------------------------------
   Future<Map<int, Team>> _loadTeams() async {
-    final supabase = Supabase.instance.client;
-    final data = await supabase.from('team').select();
-
-    final List<dynamic> rows = data as List<dynamic>;
+    final rows = await MatchRepository.fetchTeams();
     final Map<int, Team> result = {};
 
-    for (final row in rows) {
-      final map = row as Map<String, dynamic>;
+    for (final map in rows) {
       final rawId = map['id'];
-      if (rawId == null) continue;
+      if (rawId is! int) continue;
 
-      final int? id = rawId is int ? rawId : int.tryParse(rawId.toString());
-      if (id == null) continue;
-
-      result[id] = Team(
-        id: id,
-        name: (map['name'] ?? map['team_name'] ?? 'UNKNOWN TEAM').toString(),
-        logoUrl: (map['logo_url'] ?? map['team_logo_url'])?.toString(),
+      result[rawId] = Team(
+        id: rawId,
+        name: (map['name'] ?? map['team_name'] ?? 'UNKNOWN').toString(),
+        logoUrl: map['logo_url']?.toString(),
         league: map['league']?.toString(),
       );
     }
-
     return result;
   }
 
-  /// Safe parser for full timestamp-like values (ISO / epoch)
+  // ------------------------------------------------------------
+  // UTIL HELPERS
+  // ------------------------------------------------------------
+  bool _isLiveValue(dynamic raw) {
+    if (raw is bool) return raw;
+    if (raw == null) return false;
+    final s = raw.toString().toLowerCase();
+    return s == 'true' || s == '1' || s == 't' || s == 'yes';
+  }
+
   DateTime? _parseDateTimeSafe(dynamic value) {
     if (value == null) return null;
-
     try {
       if (value is DateTime) return value;
-      if (value is String) {
-        if (value.trim().isEmpty) return null;
-        return DateTime.parse(value);
-      }
-      if (value is int) {
-        // epoch seconds vs millis
-        if (value > 1000000000000) {
-          return DateTime.fromMillisecondsSinceEpoch(value, isUtc: true);
-        } else {
-          return DateTime.fromMillisecondsSinceEpoch(value * 1000, isUtc: true);
-        }
-      }
       return DateTime.parse(value.toString());
     } catch (_) {
       return null;
     }
   }
 
-  /// Build an end DateTime in UTC from either:
-  ///  - full timestamp (ISO) stored in DB OR
-  ///  - time-only string (e.g. "04:30:00" or "12:30 AM") stored in DB as time without date.
-  /// If time-only is provided, it uses the startUtc's local date (and adds 1 day if end <= start).
   DateTime buildEndUtcUsingStartLocal(DateTime startUtc, dynamic endRaw) {
-  // ❌ no fixed fallback anymore
-  if (endRaw == null) {
-    // end time না থাকলে start time ই ধরে রাখবো
-    return startUtc;
-  }
+    if (endRaw == null) return startUtc;
 
-  // 1) full timestamp (ISO / DateTime)
-  try {
-    if (endRaw is DateTime) {
-      final dt = endRaw.toUtc();
-      return dt.isAfter(startUtc) ? dt : dt.add(const Duration(days: 1));
-    }
+    // full timestamp
+    try {
+      final parsed = DateTime.tryParse(endRaw.toString());
+      if (parsed != null) {
+        final dt = parsed.toUtc();
+        return dt.isAfter(startUtc) ? dt : dt.add(const Duration(days: 1));
+      }
+    } catch (_) {}
 
-    final parsed = DateTime.tryParse(endRaw.toString());
-    if (parsed != null) {
-      final dt = parsed.toUtc();
-      return dt.isAfter(startUtc) ? dt : dt.add(const Duration(days: 1));
-    }
-  } catch (_) {}
-
-  // 2) time-only string (HH:mm / HH:mm:ss / AM-PM)
-  final startLocal = startUtc.toLocal();
-  final localDate =
-      DateTime(startLocal.year, startLocal.month, startLocal.day);
-
-  final s = endRaw.toString().trim();
-
-  // AM / PM format
-  final ampmMatch = RegExp(
-    r'^(\d{1,2}):(\d{2})(?::(\d{2}))?\s*(am|pm)$',
-    caseSensitive: false,
-  ).firstMatch(s);
-
-  if (ampmMatch != null) {
-    int h = int.parse(ampmMatch.group(1)!);
-    final m = int.parse(ampmMatch.group(2)!);
-    final sec =
-        ampmMatch.group(3) != null ? int.parse(ampmMatch.group(3)!) : 0;
-
-    final isPm = ampmMatch.group(4)!.toLowerCase() == 'pm';
-
-    if (h == 12) {
-      h = isPm ? 12 : 0;
-    } else if (isPm) {
-      h += 12;
-    }
-
-    var candidateLocal =
-        DateTime(localDate.year, localDate.month, localDate.day, h, m, sec);
-
-    if (!candidateLocal.isAfter(startLocal)) {
-      candidateLocal = candidateLocal.add(const Duration(days: 1));
-    }
-
-    return candidateLocal.toUtc();
-  }
-
-  // HH:mm / HH:mm:ss
-  final parts = s.split(':').map((p) => int.tryParse(p) ?? 0).toList();
-  if (parts.isNotEmpty) {
-    var candidateLocal = DateTime(
-      localDate.year,
-      localDate.month,
-      localDate.day,
-      parts[0],
-      parts.length > 1 ? parts[1] : 0,
-      parts.length > 2 ? parts[2] : 0,
+    // time-only
+    final startLocal = startUtc.toLocal();
+    final baseDate = DateTime(
+      startLocal.year,
+      startLocal.month,
+      startLocal.day,
     );
 
-    if (!candidateLocal.isAfter(startLocal)) {
-      candidateLocal = candidateLocal.add(const Duration(days: 1));
-    }
+    final parts = endRaw.toString().split(':');
+    if (parts.isEmpty) return startUtc;
 
-    return candidateLocal.toUtc();
+    final h = int.tryParse(parts[0]) ?? 0;
+    final m = parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0;
+
+    var candidate = DateTime(
+      baseDate.year,
+      baseDate.month,
+      baseDate.day,
+      h,
+      m,
+    );
+
+    if (!candidate.isAfter(startLocal)) {
+      candidate = candidate.add(const Duration(days: 1));
+    }
+    return candidate.toUtc();
   }
 
-  // ❌ no fallback
-  return startUtc;
-}
-
-
+  // ------------------------------------------------------------
+  // OPEN CHANNEL
+  // ------------------------------------------------------------
   Future<void> _openChannelById(int channelId) async {
     try {
-      final supabase = Supabase.instance.client;
-
-      final channel = await supabase.from('channel_list').select().eq('id', channelId).maybeSingle();
+      final channel = await MatchRepository.getChannelById(channelId);
 
       if (channel == null) {
-        debugPrint('Channel not found for id $channelId');
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Channel not found')),
-        );
+        _snack('Channel not found');
+        return;
+      }
+
+      final url = channel['channel_link']?.toString() ?? '';
+      if (url.isEmpty) {
+        _snack('Channel link is empty');
         return;
       }
 
       if (!mounted) return;
-
-      final url = channel['channel_link']?.toString() ?? '';
-      if (url.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Channel link is empty')),
-        );
-        return;
-      }
 
       Navigator.push(
         context,
@@ -209,40 +145,31 @@ class _MatchHomeScreenState extends State<MatchHomeScreen> {
         ),
       );
     } catch (e) {
-      debugPrint('Error loading channel: $e');
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to open channel: $e')),
-      );
+      _snack('Failed to open channel');
     }
   }
 
-  bool _isLiveValue(dynamic raw) {
-    if (raw == null) return false;
-    if (raw is bool) return raw;
-    final s = raw.toString().toLowerCase();
-    return s == 'true' || s == '1' || s == 't' || s == 'yes';
+  void _snack(String msg) {
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(msg)));
   }
 
+  // ------------------------------------------------------------
+  // UI
+  // ------------------------------------------------------------
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        backgroundColor:Theme.of(context).colorScheme.surface,
-        
-        title: SvgPicture.asset(
-          'assets/images/golazos.svg',
-          height: 28,
-        ),
-        
+        backgroundColor: Theme.of(context).colorScheme.tertiary,
+       scrolledUnderElevation: 0,
         centerTitle: true,
+        title: Text('L U M I C A S T', style: TextStyle( fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.inversePrimary,),),
         actions: [
           IconButton(
-            onPressed: () {
-              Get.to(ALLChannelScreen());
-            },
-            icon: Icon(Icons.tv_rounded, color: Colors.black54),
+            icon: Icon(Icons.tv_rounded, color:Theme.of(context).colorScheme.inversePrimary,),
+            onPressed: () => Get.to(() => ALLChannelScreen()),
           )
         ],
       ),
@@ -251,183 +178,107 @@ class _MatchHomeScreenState extends State<MatchHomeScreen> {
         children: [
           MatchCategoryTabs(
             initial: _currentFilter,
-            onChanged: (value) {
-              setState(() {
-                _currentFilter = value;
-              });
-            },
+            onChanged: (v) => setState(() => _currentFilter = v),
           ),
-
           Expanded(
             child: FutureBuilder<Map<int, Team>>(
               future: _teamMapFuture,
-              builder: (context, teamSnapshot) {
-                if (teamSnapshot.connectionState == ConnectionState.waiting) {
+              builder: (context, teamSnap) {
+                if (teamSnap.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                if (teamSnapshot.hasError) {
-                  return Center(
-                    child: Text(
-                      'Error loading teams: ${teamSnapshot.error}',
-                      textAlign: TextAlign.center,
-                    ),
-                  );
-                }
-
-                final teamMap = teamSnapshot.data ?? {};
+                final teamMap = teamSnap.data ?? {};
 
                 return StreamBuilder<List<Map<String, dynamic>>>(
-                  // map the loose stream into the expected shape safely
-                  stream: _matchStream.map((event) {
-                    try {
-                      final List<dynamic> raw = event as List<dynamic>;
-                      return raw.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-                    } catch (_) {
-                      return <Map<String, dynamic>>[];
-                    }
-                  }),
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-
-                    if (snapshot.hasError) {
-                      return Center(
-                        child: Text('Error: ${snapshot.error}'),
+                  stream: _matchStream,
+                  builder: (context, snap) {
+                    if (!snap.hasData) {
+                      return const Center(
+                        child: CircularProgressIndicator(),
                       );
                     }
 
-                    final matches = snapshot.data ?? [];
-
-                    final nowLocal = DateTime.now();
-                    final todayLocal = DateTime(nowLocal.year, nowLocal.month, nowLocal.day);
                     final nowUtc = DateTime.now().toUtc();
 
-                    // ----------------------------------------------------------------
-                    // IMPORTANT: Keep ended matches visible until DB row is deleted.
-                    // So we DO NOT filter-out by end-time here.
-                    // ----------------------------------------------------------------
-                    final filteredByDate = matches.toList();
+                    final matches = snap.data!
+                        .where((m) {
+                          if (_currentFilter == 'ALL') return true;
+                          final cat = (m['match_categories'] ?? '')
+                              .toString()
+                              .toUpperCase();
+                          return cat.contains(_currentFilter);
+                        })
+                        .toList();
 
-                    // ------------------------------------------------------------
-                    // filteredByEndTime is same as filteredByDate (keeps ended rows)
-                    // ------------------------------------------------------------
-                    final filteredByEndTime = List<Map<String, dynamic>>.from(filteredByDate);
+                    matches.sort((a, b) {
+                      final s1 =
+                          _parseDateTimeSafe(a['match_start_time']) ??
+                              nowUtc;
+                      final s2 =
+                          _parseDateTimeSafe(b['match_start_time']) ??
+                              nowUtc;
 
-                    // 3) Category filter (ALL / CRICKET / FOOTBALL)
-                    final filteredByCategory = filteredByEndTime.where((match) {
-                      if (_currentFilter == 'ALL') return true;
+                      final e1 =
+                          buildEndUtcUsingStartLocal(s1, a['match_end_time']);
+                      final e2 =
+                          buildEndUtcUsingStartLocal(s2, b['match_end_time']);
 
-                      final cat = (match['match_categories'] ?? '').toString().toUpperCase();
-                      return cat.contains(_currentFilter.toUpperCase());
-                    }).toList();
-
-                    // 4) Sort: LIVE -> UPCOMING -> ENDED, stable within-group ordering
-                    filteredByCategory.sort((a, b) {
-                      final nowUtc = DateTime.now().toUtc();
-
-                      final DateTime t1Start = (_parseDateTimeSafe(a['match_start_time']) ?? DateTime.now().toUtc()).toUtc();
-                      final DateTime t2Start = (_parseDateTimeSafe(b['match_start_time']) ?? DateTime.now().toUtc()).toUtc();
-
-                      final DateTime t1End = buildEndUtcUsingStartLocal(t1Start, a['match_end_time']);
-                      final DateTime t2End = buildEndUtcUsingStartLocal(t2Start, b['match_end_time']);
-
-                      int status(DateTime start, DateTime end, dynamic rawIsLive) {
-                        final bool dbLive = _isLiveValue(rawIsLive);
-                        final bool timeLive = (nowUtc.isAtSameMomentAs(start) || nowUtc.isAfter(start)) &&
-                            (nowUtc.isAtSameMomentAs(end) || nowUtc.isBefore(end));
-                        if (dbLive || timeLive) return 0; // live
-                        if (nowUtc.isBefore(start)) return 1; // upcoming
-                        return 2; // ended
+                      int status(Map<String, dynamic> m, DateTime s, DateTime e) {
+                        if (_isLiveValue(m['is_live'])) return 0;
+                        if (nowUtc.isBefore(s)) return 1;
+                        return 2;
                       }
 
-                      final s1 = status(t1Start, t1End, a['is_live']);
-                      final s2 = status(t2Start, t2End, b['is_live']);
-
-                      // primary by status
-                      if (s1 != s2) return s1.compareTo(s2);
-
-                      // within same status group:
-                      if (s1 == 0) {
-                        // both live -> earliest start first
-                        return t1Start.compareTo(t2Start);
-                      } else if (s1 == 1) {
-                        // both upcoming -> nearest start first
-                        return t1Start.compareTo(t2Start);
-                      } else {
-                        // both ended -> most recently ended first
-                        return t2End.compareTo(t1End);
-                      }
+                      return status(a, s1, e1)
+                          .compareTo(status(b, s2, e2));
                     });
 
-                    if (filteredByCategory.isEmpty) {
+                    if (matches.isEmpty) {
                       return const Center(
-                        child: Text('No matches for selected filter'),
+                        child: Text('No matches found'),
                       );
                     }
 
                     return ListView.builder(
                       padding: const EdgeInsets.symmetric(horizontal: 16),
-                      itemCount: filteredByCategory.length,
-                      itemBuilder: (context, index) {
-                        final match = filteredByCategory[index];
+                      itemCount: matches.length,
+                      itemBuilder: (context, i) {
+                        final m = matches[i];
 
-                        final int? teamAId = match['team_a_id'] is int
-                            ? match['team_a_id'] as int
-                            : (int.tryParse(match['team_a_id']?.toString() ?? ''));
+                        final Team teamA =
+                            teamMap[m['team_a_id']] ??
+                                Team(id: -1, name: 'TEAM A');
+                        final Team teamB =
+                            teamMap[m['team_b_id']] ??
+                                Team(id: -2, name: 'TEAM B');
 
-                        final int? teamBId = match['team_b_id'] is int
-                            ? match['team_b_id'] as int
-                            : (int.tryParse(match['team_b_id']?.toString() ?? ''));
-
-                        final Team teamA = (teamAId != null && teamMap.containsKey(teamAId))
-                            ? teamMap[teamAId]!
-                            : Team(
-                                id: -1,
-                                name: 'TEAM A',
-                                logoUrl: null,
-                              );
-
-                        final Team teamB = (teamBId != null && teamMap.containsKey(teamBId))
-                            ? teamMap[teamBId]!
-                            : Team(
-                                id: -2,
-                                name: 'TEAM B',
-                                logoUrl: null,
-                              );
-
-                        // parse start safely (use UTC for comparisons)
-                        final DateTime startUtc =
-                            (_parseDateTimeSafe(match['match_start_time']) ?? DateTime.now().toUtc()).toUtc();
-
-                        // build a normalized end UTC (handles time-only and cross-midnight)
-                        final DateTime endUtc = buildEndUtcUsingStartLocal(startUtc, match['match_end_time']);
+                        final start =
+                            _parseDateTimeSafe(m['match_start_time']) ??
+                                nowUtc;
+                        final end =
+                            buildEndUtcUsingStartLocal(start, m['match_end_time']);
 
                         return LiveMatchCard(
-                          matchName: match['match_name']?.toString() ?? '',
-                          matchCategories: match['match_categories']?.toString(),
+                          matchName: m['match_name']?.toString() ?? '',
+                          matchCategories:
+                              m['match_categories']?.toString(),
                           teamA: teamA,
                           teamB: teamB,
-                          isLive: _isLiveValue(match['is_live']),
-                          matchStartTime: startUtc,
-                          matchEndTime: endUtc, // normalized end time in UTC
-                          hideWhenEnded: false, // KEEP the card visible until DB row deleted
-                          // debugLogs: true,
+                          isLive: _isLiveValue(m['is_live']),
+                          matchStartTime: start,
+                          matchEndTime: end,
+                          hideWhenEnded: false,
                           onTap: () {
-                            final channelIdRaw = match['live_video_url'];
-                            final int? channelId = channelIdRaw is int
-                                ? channelIdRaw
-                                : int.tryParse(channelIdRaw?.toString() ?? '');
-
-                            if (channelId == null) {
-                              debugPrint('live_video_url is null for match ${match['id']}');
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Channel not available')),
-                              );
-                              return;
+                            final raw = m['live_video_url'];
+                            final id = raw is int
+                                ? raw
+                                : int.tryParse(raw?.toString() ?? '');
+                            if (id != null) {
+                              _openChannelById(id);
+                            } else {
+                              _snack('Channel not available');
                             }
-                            _openChannelById(channelId);
                           },
                         );
                       },
