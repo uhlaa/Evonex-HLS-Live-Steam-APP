@@ -63,25 +63,39 @@ class _HorizontalChannelListState
     }).toList();
   }
 
-  Widget _buildHeader() {
-    final title = widget.category != null
-        ? '${widget.category![0].toUpperCase()}${widget.category!.substring(1)} Channel'
-        : '${widget.title} Channel';
+Widget _buildHeader() {
+  String title;
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Text(
-        title,
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.bold,
-          color: Theme.of(context)
-              .colorScheme
-              .inversePrimary,
-        ),
-      ),
-    );
+  switch (widget.category?.toLowerCase()) {
+    case 'sports':
+      title = 'Sports Channels';
+      break;
+    case 'entertainment':
+      title = 'Entertainment';
+      break;
+    case 'news':
+      title = 'News';
+      break;
+    case 'kids':
+      title = 'Kids Zone';
+      break;
+    default:
+      title = widget.title;
   }
+
+  return Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    child: Text(
+      title,
+      style: TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.bold,
+        color: Theme.of(context).colorScheme.inversePrimary,
+      ),
+    ),
+  );
+}
+
 
   // ------------------------------------------------------------
   // UI

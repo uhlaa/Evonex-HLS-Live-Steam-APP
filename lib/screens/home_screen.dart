@@ -29,13 +29,7 @@ class _ALLChannelScreenState extends State<ALLChannelScreen> {
       appBar: AppBar(
            backgroundColor: Theme.of(context).colorScheme.tertiary,
         centerTitle: true,
-        title: const Text(
-          'Channels',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
-        ),
+         title: Text('All Channels', style: TextStyle( fontWeight: FontWeight.w700,fontSize: 20, color: Theme.of(context).colorScheme.inversePrimary,),),
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
         stream: _channelStream,

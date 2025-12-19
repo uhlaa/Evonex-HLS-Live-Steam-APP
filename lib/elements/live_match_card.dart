@@ -1,6 +1,7 @@
 // lib/elements/live_match_card.dart
 
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:evonex/elements/live_badge.dart';
 import 'package:flutter/material.dart';
 
@@ -350,10 +351,18 @@ class _TeamBlock extends StatelessWidget {
           width: 52,
           child: logoUrl.isEmpty
               ? const Icon(Icons.sports_cricket, size: 32)
-              : Image.network(
-                  logoUrl,
+              : CachedNetworkImage(
+                  imageUrl: logoUrl,
                   fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Icon(Icons.broken_image),
+                  fadeInDuration: const Duration(milliseconds: 0),
+                  fadeOutDuration: const Duration(milliseconds: 0),
+                  placeholder: (context, url) => const SizedBox(
+                    height: 24,
+                    width: 24,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  errorWidget: (context, url, error) =>
+                      const Icon(Icons.broken_image),
                 ),
         ),
         const SizedBox(height: 6),
@@ -370,3 +379,4 @@ class _TeamBlock extends StatelessWidget {
     );
   }
 }
+

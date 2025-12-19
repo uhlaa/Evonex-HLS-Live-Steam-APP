@@ -1,9 +1,12 @@
 // lib/screens/match_home_screen.dart
 
 import 'package:evonex/controller/match_repository.dart';
+import 'package:evonex/theme/theme_provider.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
+import 'package:provider/provider.dart';
 
 
 import '../elements/live_match_card.dart';
@@ -165,15 +168,31 @@ class _MatchHomeScreenState extends State<MatchHomeScreen> {
         backgroundColor: Theme.of(context).colorScheme.tertiary,
        scrolledUnderElevation: 0,
         centerTitle: true,
-        title: Text('L U M I C A S T', style: TextStyle( fontWeight: FontWeight.bold, color: Theme.of(context).colorScheme.inversePrimary,),),
+        title: Text('S P O R T E E', style: TextStyle( fontWeight: FontWeight.w700,fontSize: 20, color: Theme.of(context).colorScheme.inversePrimary,),),
+        leading: IconButton(
+                 icon: Icon(Icons.tv_rounded, color:Theme.of(context).colorScheme.inversePrimary,),
+                 onPressed: () => Get.to(() => ALLChannelScreen()),
+               ),
         actions: [
-          IconButton(
-            icon: Icon(Icons.tv_rounded, color:Theme.of(context).colorScheme.inversePrimary,),
-            onPressed: () => Get.to(() => ALLChannelScreen()),
+          Row(
+            children: [
+              Transform.scale(
+                scale: 0.8,
+                child: Switch(
+                          value: Provider.of<ThemeProvider>(context).isDarkMode,
+                          onChanged: (value) =>
+                Provider.of<ThemeProvider>(context, listen: false).toggleTheme(),
+                        ),
+              ),
+              // IconButton(
+              //   icon: Icon(Icons.tv_rounded, color:Theme.of(context).colorScheme.inversePrimary,),
+              //   onPressed: () => Get.to(() => ALLChannelScreen()),
+              // ),
+            ],
           )
         ],
       ),
-      drawer: const MyDrawer(),
+      // drawer: const MyDrawer(),
       body: Column(
         children: [
           MatchCategoryTabs(

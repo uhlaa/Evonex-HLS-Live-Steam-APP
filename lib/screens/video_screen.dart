@@ -1,4 +1,5 @@
 import 'package:evonex/controller/channel_repository.dart';
+import 'package:evonex/elements/vertical_channel_list.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
@@ -34,8 +35,7 @@ class VideoScreen extends StatefulWidget {
   VideoScreenState createState() => VideoScreenState();
 }
 
-class VideoScreenState extends State<VideoScreen>
-    with WidgetsBindingObserver {
+class VideoScreenState extends State<VideoScreen> with WidgetsBindingObserver {
   VideoPlayerController? _videoController;
   ChewieController? _chewieController;
 
@@ -95,8 +95,7 @@ class VideoScreenState extends State<VideoScreen>
       final vc = _videoController;
       if (vc == null || !vc.value.isInitialized) return;
 
-      if (!vc.value.isPlaying &&
-          vc.value.position > Duration.zero) {
+      if (!vc.value.isPlaying && vc.value.position > Duration.zero) {
         _userPaused = true;
       } else if (vc.value.isPlaying) {
         _userPaused = false;
@@ -120,13 +119,14 @@ class VideoScreenState extends State<VideoScreen>
       isLive: true,
       allowPlaybackSpeedChanging: false,
       allowMuting: false,
+      autoInitialize: true,
+      allowedScreenSleep: false,
+      aspectRatio: videoCtrl.value.aspectRatio,
       deviceOrientationsOnEnterFullScreen: const [
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
       ],
-      deviceOrientationsAfterFullScreen: const [
-        DeviceOrientation.portraitUp,
-      ],
+      deviceOrientationsAfterFullScreen: const [DeviceOrientation.portraitUp],
     );
 
     if (mounted) setState(() {});
@@ -158,10 +158,7 @@ class VideoScreenState extends State<VideoScreen>
   // ------------------------------------------------------------
   // STREAM SWITCH (FIXED)
   // ------------------------------------------------------------
-  Future<void> changeStream(
-    String newUrl, {
-    String? placeholderImage,
-  }) async {
+  Future<void> changeStream(String newUrl, {String? placeholderImage}) async {
     if (_switchingStream) return;
     if (newUrl.isEmpty) return;
 
@@ -196,8 +193,7 @@ class VideoScreenState extends State<VideoScreen>
 
     if (state == AppLifecycleState.paused) {
       _videoController?.pause();
-    } else if (state == AppLifecycleState.resumed &&
-        !_userPaused) {
+    } else if (state == AppLifecycleState.resumed && !_userPaused) {
       _videoController?.play();
     }
   }
@@ -227,8 +223,9 @@ class VideoScreenState extends State<VideoScreen>
           child: Column(
             children: [
               // ---------------- VIDEO ----------------
-              AspectRatio(
-                aspectRatio: 16 / 9,
+              SizedBox(
+                width: double.infinity,
+                height: MediaQuery.of(context).size.width * 9 / 16,
                 child: Container(
                   color: Colors.black, // ✅ ALWAYS BLACK
                   child: Stack(
@@ -239,10 +236,8 @@ class VideoScreenState extends State<VideoScreen>
                         Center(
                           child: AnimatedOpacity(
                             opacity: 0.4,
-                            duration:
-                                const Duration(milliseconds: 250),
-                            child: _currentPlaceholder!.startsWith(
-                                    'http')
+                            duration: const Duration(milliseconds: 250),
+                            child: _currentPlaceholder!.startsWith('http')
                                 ? Image.network(
                                     _currentPlaceholder!,
                                     width: 160,
@@ -259,9 +254,7 @@ class VideoScreenState extends State<VideoScreen>
                       // 🔹 VIDEO PLAYER
                       if (playerReady)
                         Positioned.fill(
-                          child: Chewie(
-                            controller: _chewieController!,
-                          ),
+                          child: Chewie(controller: _chewieController!),
                         ),
                     ],
                   ),
@@ -270,40 +263,10 @@ class VideoScreenState extends State<VideoScreen>
 
               // ---------------- CHANNEL LISTS ----------------
               Expanded(
-                child: StreamBuilder<List<Map<String, dynamic>>>(
-                  stream: _channelStream,
-                  builder: (context, snapshot) {
-                    if (!snapshot.hasData) {
-                      return const Center(
-                        child: CircularProgressIndicator(),
-                      );
-                    }
-
-                    return SingleChildScrollView(
-                      child: Column(
-                        children: const [
-                          SizedBox(height: 20),
-
-                          HorizontalChannelList(
-                              category: 'sports'),
-                          SizedBox(height: 15),
-
-                          HorizontalChannelList(
-                              category: 'entertainment'),
-                          SizedBox(height: 15),
-
-                          HorizontalChannelList(
-                              category: 'news'),
-                          SizedBox(height: 15),
-
-                          HorizontalChannelList(
-                              category: 'kids'),
-                          SizedBox(height: 15),
-                        ],
-                      ),
-                    );
-                  },
-                ),
+                child:    Padding(
+                  padding: const EdgeInsets.symmetric( vertical: 16, horizontal: 16),
+                  child: VerticalChannelList(),
+                )
               ),
             ],
           ),
