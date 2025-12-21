@@ -4,6 +4,7 @@ import 'package:evonex/controller/match_repository.dart';
 import 'package:evonex/theme/theme_provider.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_advanced_drawer/flutter_advanced_drawer.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
@@ -16,11 +17,17 @@ import '../screens/home_screen.dart';
 import '../screens/video_screen.dart';
 
 class MatchHomeScreen extends StatefulWidget {
-  const MatchHomeScreen({super.key});
+  final AdvancedDrawerController advancedDrawerController;
+
+  const MatchHomeScreen({
+    super.key,
+    required this.advancedDrawerController,
+  });
 
   @override
   State<MatchHomeScreen> createState() => _MatchHomeScreenState();
 }
+
 
 class _MatchHomeScreenState extends State<MatchHomeScreen> {
   late final Stream<List<Map<String, dynamic>>> _matchStream;
@@ -35,6 +42,11 @@ class _MatchHomeScreenState extends State<MatchHomeScreen> {
     _matchStream = MatchRepository.streamMatches();
     _teamMapFuture = _loadTeams();
   }
+
+
+void _handleMenuButtonPressed() {
+  widget.advancedDrawerController.toggleDrawer();
+}
 
   // ------------------------------------------------------------
   // TEAM LOAD
@@ -169,10 +181,29 @@ class _MatchHomeScreenState extends State<MatchHomeScreen> {
        scrolledUnderElevation: 0,
         centerTitle: true,
         title: Text('S P O R T E E', style: TextStyle( fontWeight: FontWeight.w700,fontSize: 20, color: Theme.of(context).colorScheme.inversePrimary,),),
+        // leading: IconButton(
+        //          icon: Icon(Icons.tv_rounded, color:Theme.of(context).colorScheme.inversePrimary,),
+        //          onPressed: () => Get.to(() => ALLChannelScreen()),
+        //        ),
         leading: IconButton(
-                 icon: Icon(Icons.tv_rounded, color:Theme.of(context).colorScheme.inversePrimary,),
-                 onPressed: () => Get.to(() => ALLChannelScreen()),
-               ),
+          onPressed: _handleMenuButtonPressed,
+          icon: ValueListenableBuilder<AdvancedDrawerValue>(
+            valueListenable: widget.advancedDrawerController,
+            builder: (_, value, __) {
+              return AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                child: Semantics(
+                  label: 'Menu',
+                  onTapHint: 'expand drawer',
+                  child: Icon(
+                    value.visible ? Icons.clear : Icons.menu,
+                    key: ValueKey<bool>(value.visible),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
         actions: [
           Row(
             children: [

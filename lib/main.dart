@@ -1,3 +1,4 @@
+import 'package:evonex/elements/my_drawer.dart';
 import 'package:evonex/home_screens.dart';
 import 'package:evonex/screens/home_screen.dart';
 import 'package:evonex/screens/match_home_screen.dart';
@@ -5,6 +6,7 @@ import 'package:evonex/screens/splash_screen.dart';
 import 'package:evonex/theme/theme_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_advanced_drawer/flutter_advanced_drawer.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -40,15 +42,18 @@ Future<void> main() async {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
+  
 
   @override
   Widget build(BuildContext context) {
+    final AdvancedDrawerController _advancedDrawerController =
+      AdvancedDrawerController();
       final themeProvider = Provider.of<ThemeProvider>(context);
     return GetMaterialApp(
       title: 'HLS Player',
       theme: themeProvider.themeData,
       debugShowCheckedModeBanner: false,
-      home: MatchHomeScreen(),
+      home: const NewDrawer(),
     );
   }
 }

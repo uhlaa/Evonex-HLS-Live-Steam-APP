@@ -67,7 +67,7 @@ class _VerticalChannelListState extends State<VerticalChannelList> {
   crossAxisAlignment: CrossAxisAlignment.start,
   children: [
     Text(
-      "Sports Channel".toUpperCase(),
+      "Sports Channels".toUpperCase(),
       style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w900,

@@ -17,6 +17,8 @@ class VerticalChannelTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -24,29 +26,28 @@ class VerticalChannelTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: isPlaying
               ? const Color(0xFFFF4C5B).withOpacity(.10)
-              : Theme.of(context).colorScheme.tertiary,
+              : theme.colorScheme.tertiary,
           borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
           children: [
-            /// ✅ LOGO (FIXED – cached)
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
+            /// 🔧 LOGO BOX (uniform container)
+            Container(
+              width: 70,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(.05),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              alignment: Alignment.center,
               child: CachedNetworkImage(
                 imageUrl: channel.image,
-                width: 70,
-                height: 44,
-    
-                fadeInDuration: const Duration(milliseconds: 0),
-                fadeOutDuration: const Duration(milliseconds: 0),
-                placeholder: (context, url) => Container(
-                  width: 70,
-                  height: 44,
-                  color: Colors.grey.shade300,
-                ),
+                fit: BoxFit.contain,
+                fadeInDuration: Duration.zero,
+                fadeOutDuration: Duration.zero,
                 errorWidget: (context, url, error) => const Icon(
                   Icons.tv,
-                  size: 32,
+                  size: 26,
                   color: Colors.white54,
                 ),
               ),
@@ -58,22 +59,32 @@ class VerticalChannelTile extends StatelessWidget {
             Expanded(
               child: Text(
                 channel.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: Theme.of(context).colorScheme.inversePrimary,
+                  color: theme.colorScheme.inversePrimary,
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
             ),
 
-            /// RIGHT ICON
+            const SizedBox(width: 8),
+
+            /// 🔧 RIGHT ICON (circular play button)
             isPlaying
                 ? const PlayingEqualizer()
-                : Icon(
-                    Icons.play_arrow,
-                    color: Theme.of(context).colorScheme.inversePrimary,
+                : Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.black.withOpacity(.05),
+                    ),
+                    child: Icon(
+                      Icons.play_arrow_rounded,
+                      color: theme.colorScheme.inversePrimary,
+                    ),
                   ),
           ],
         ),

@@ -50,6 +50,8 @@ dependencies:
   cached_network_image: ^3.4.1
   provider: ^6.1.5+1
   shared_preferences: ^2.5.4
+  flutter_advanced_drawer: ^1.5.0
+  iconsax_plus: ^1.0.0
 
 
 dev_dependencies:
