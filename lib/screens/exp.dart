@@ -150,3 +150,286 @@
 //   }
 // }
 
+
+
+
+import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:evonex/elements/live_badge.dart';
+import 'package:flutter/material.dart';
+
+/// Generic team model – jekono league er jonno use hobe
+class Team {
+  final int id; // team_id (INT2)
+  final String name; // team_name
+  final String? logoUrl; // team_logo_url
+  final String? league; // optional: "BBL", "BPL", etc.
+
+  Team({
+    required this.id,
+    required this.name,
+    this.logoUrl,
+    this.league,
+  });
+}
+
+class LiveMatchCard extends StatefulWidget {
+  final String matchName;
+  final String? matchCategories;
+
+  /// team table (team_a_id / team_b_id)
+  final Team teamA;
+  final Team teamB;
+
+  /// DB theke asha isLive flag
+  final bool isLive;
+
+  /// DB match_start_time
+  final DateTime matchStartTime;
+
+  /// DB match_end_time
+  final DateTime matchEndTime;
+
+  final VoidCallback? onTap;
+
+  /// true hole match sesh e card hide hobe
+  final bool hideWhenEnded;
+
+  /// debug print
+  final bool debugLogs;
+
+  const LiveMatchCard({
+    super.key,
+    required this.matchName,
+    this.matchCategories,
+    required this.teamA,
+    required this.teamB,
+    required this.matchStartTime,
+    required this.matchEndTime,
+    this.isLive = false,
+    this.onTap,
+    this.hideWhenEnded = false,
+    this.debugLogs = false,
+  });
+
+  @override
+  State<LiveMatchCard> createState() => _LiveMatchCardState();
+}
+
+class _LiveMatchCardState extends State<LiveMatchCard> {
+  Timer? _liveTimer;
+  bool _timeBasedLive = false;
+
+  static const Duration _checkInterval = Duration(seconds: 30);
+
+  @override
+  void initState() {
+    super.initState();
+    _checkLiveByTime();
+    _startLiveTimer();
+  }
+
+  @override
+  void didUpdateWidget(covariant LiveMatchCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.matchStartTime != widget.matchStartTime ||
+        oldWidget.matchEndTime != widget.matchEndTime ||
+        oldWidget.isLive != widget.isLive ||
+        oldWidget.hideWhenEnded != widget.hideWhenEnded) {
+      _checkLiveByTime();
+      _startLiveTimer();
+    }
+  }
+
+  @override
+  void dispose() {
+    _liveTimer?.cancel();
+    super.dispose();
+  }
+
+  void _startLiveTimer() {
+    _liveTimer?.cancel();
+    _liveTimer = Timer.periodic(_checkInterval, (_) {
+      if (!mounted) return;
+      _checkLiveByTime();
+    });
+  }
+
+  void _checkLiveByTime() {
+    final nowUtc = DateTime.now().toUtc();
+    final startUtc = widget.matchStartTime.toUtc();
+    final endUtc = widget.matchEndTime.toUtc();
+
+    final isNowLive =
+        (nowUtc.isAtSameMomentAs(startUtc) || nowUtc.isAfter(startUtc)) &&
+        (nowUtc.isAtSameMomentAs(endUtc) || nowUtc.isBefore(endUtc));
+
+    if (widget.debugLogs) {
+      debugPrint('nowUtc   : $nowUtc');
+      debugPrint('startUtc : $startUtc');
+      debugPrint('endUtc   : $endUtc');
+      debugPrint('isLive   : $isNowLive');
+    }
+
+    if (isNowLive != _timeBasedLive) {
+      setState(() {
+        _timeBasedLive = isNowLive;
+      });
+    }
+  }
+
+  bool get _isActuallyLive => widget.isLive || _timeBasedLive;
+
+  String _formatDate(DateTime dt) {
+    final d = dt.toLocal();
+    return "${d.day.toString().padLeft(2, '0')}-"
+        "${d.month.toString().padLeft(2, '0')}-${d.year}";
+  }
+
+  String _formatTime(DateTime dt) {
+    final d = dt.toLocal();
+    int hour = d.hour;
+    final min = d.minute.toString().padLeft(2, '0');
+    final suffix = hour >= 12 ? 'PM' : 'AM';
+
+    if (hour == 0) hour = 12;
+    if (hour > 12) hour -= 12;
+
+    return "$hour:$min $suffix";
+  }
+
+  String _statusText() {
+    if (_isActuallyLive) return "";
+
+    final nowUtc = DateTime.now().toUtc();
+    if (nowUtc.isAfter(widget.matchEndTime.toUtc())) {
+      return "MATCH ENDED";
+    }
+
+    final now = DateTime.now();
+    final start = widget.matchStartTime.toLocal();
+
+    final today = DateTime(now.year, now.month, now.day);
+    final matchDay = DateTime(start.year, start.month, start.day);
+    final diff = matchDay.difference(today).inDays;
+
+    if (diff == 0) {
+      return "TODAY · ${_formatTime(start)}";
+    } else if (diff == 1) {
+      return "TOMORROW · ${_formatTime(start)}";
+    } else {
+      return "${_formatDate(start)} · ${_formatTime(start)}";
+    }
+  }
+
+  Widget get _statusWidget {
+    if (_isActuallyLive) {
+      return const LiveBadge();
+    }
+    return Text(
+      _statusText(),
+      style: TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.w500,
+        color: Theme.of(context).colorScheme.inversePrimary,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.hideWhenEnded &&
+        DateTime.now().toUtc().isAfter(widget.matchEndTime.toUtc())) {
+      return const SizedBox.shrink();
+    }
+
+    return InkWell(
+      onTap: widget.onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.tertiary,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    widget.matchName.toUpperCase(),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  
+                ),
+                _statusWidget,
+              ],
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(child: _TeamBlock(team: widget.teamA)),
+                const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 20),
+                  child: Text(
+                    "VS",
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Expanded(child: _TeamBlock(team: widget.teamB)),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TeamBlock extends StatelessWidget {
+  final Team team;
+
+  const _TeamBlock({required this.team});
+
+  @override
+  Widget build(BuildContext context) {
+    final logo = team.logoUrl?.trim() ?? '';
+
+    return Column(
+      children: [
+        SizedBox(
+          height: 52,
+          width: 52,
+          child: logo.isEmpty
+              ? const Icon(Icons.sports_cricket)
+              : CachedNetworkImage(
+                  imageUrl: logo,
+                  fit: BoxFit.contain,
+                ),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          team.name.toUpperCase(),
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+

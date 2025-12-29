@@ -1,19 +1,12 @@
-// lib/screens/match_home_screen.dart
-
 import 'package:evonex/controller/match_repository.dart';
 import 'package:evonex/theme/theme_provider.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_advanced_drawer/flutter_advanced_drawer.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 
-
 import '../elements/live_match_card.dart';
 import '../elements/match_tab.dart';
-import '../elements/my_drawer.dart';
-import '../screens/home_screen.dart';
 import '../screens/video_screen.dart';
 
 class MatchHomeScreen extends StatefulWidget {
@@ -28,12 +21,10 @@ class MatchHomeScreen extends StatefulWidget {
   State<MatchHomeScreen> createState() => _MatchHomeScreenState();
 }
 
-
 class _MatchHomeScreenState extends State<MatchHomeScreen> {
   late final Stream<List<Map<String, dynamic>>> _matchStream;
   late final Future<Map<int, Team>> _teamMapFuture;
 
-  /// ALL / CRICKET / FOOTBALL
   String _currentFilter = 'ALL';
 
   @override
@@ -43,13 +34,12 @@ class _MatchHomeScreenState extends State<MatchHomeScreen> {
     _teamMapFuture = _loadTeams();
   }
 
-
-void _handleMenuButtonPressed() {
-  widget.advancedDrawerController.toggleDrawer();
-}
+  void _handleMenuButtonPressed() {
+    widget.advancedDrawerController.toggleDrawer();
+  }
 
   // ------------------------------------------------------------
-  // TEAM LOAD
+  // LOAD TEAMS
   // ------------------------------------------------------------
   Future<Map<int, Team>> _loadTeams() async {
     final rows = await MatchRepository.fetchTeams();
@@ -70,15 +60,8 @@ void _handleMenuButtonPressed() {
   }
 
   // ------------------------------------------------------------
-  // UTIL HELPERS
+  // HELPERS
   // ------------------------------------------------------------
-  bool _isLiveValue(dynamic raw) {
-    if (raw is bool) return raw;
-    if (raw == null) return false;
-    final s = raw.toString().toLowerCase();
-    return s == 'true' || s == '1' || s == 't' || s == 'yes';
-  }
-
   DateTime? _parseDateTimeSafe(dynamic value) {
     if (value == null) return null;
     try {
@@ -90,44 +73,54 @@ void _handleMenuButtonPressed() {
   }
 
   DateTime buildEndUtcUsingStartLocal(DateTime startUtc, dynamic endRaw) {
-    if (endRaw == null) return startUtc;
+  // 1️⃣ End time missing → fallback
+  if (endRaw == null) {
+    return startUtc.add(const Duration(hours: 4));
+  }
 
-    // full timestamp
-    try {
-      final parsed = DateTime.tryParse(endRaw.toString());
-      if (parsed != null) {
-        final dt = parsed.toUtc();
-        return dt.isAfter(startUtc) ? dt : dt.add(const Duration(days: 1));
-      }
-    } catch (_) {}
+  final endStr = endRaw.toString();
 
-    // time-only
+  // 2️⃣ Full datetime (YYYY-MM-DD ...)
+  final full = DateTime.tryParse(endStr);
+  if (full != null) {
+    final endUtc = full.toUtc();
+    return endUtc.isAfter(startUtc)
+        ? endUtc
+        : startUtc.add(const Duration(hours: 4));
+  }
+
+  // 3️⃣ TIME ONLY (HH:mm:ss) ⭐ MAIN FIX
+  final parts = endStr.split(':');
+  if (parts.length >= 2) {
+    final h = int.tryParse(parts[0]) ?? 0;
+    final m = int.tryParse(parts[1]) ?? 0;
+    final s = parts.length > 2 ? int.tryParse(parts[2]) ?? 0 : 0;
+
     final startLocal = startUtc.toLocal();
-    final baseDate = DateTime(
+
+    final endLocal = DateTime(
       startLocal.year,
       startLocal.month,
       startLocal.day,
-    );
-
-    final parts = endRaw.toString().split(':');
-    if (parts.isEmpty) return startUtc;
-
-    final h = int.tryParse(parts[0]) ?? 0;
-    final m = parts.length > 1 ? int.tryParse(parts[1]) ?? 0 : 0;
-
-    var candidate = DateTime(
-      baseDate.year,
-      baseDate.month,
-      baseDate.day,
       h,
       m,
+      s,
     );
 
-    if (!candidate.isAfter(startLocal)) {
-      candidate = candidate.add(const Duration(days: 1));
+    final endUtc = endLocal.toUtc();
+
+    // ⚠️ if end <= start → next day
+    if (!endUtc.isAfter(startUtc)) {
+      return endUtc.add(const Duration(days: 1));
     }
-    return candidate.toUtc();
+
+    return endUtc;
   }
+
+  // 4️⃣ ultimate fallback
+  return startUtc.add(const Duration(hours: 4));
+}
+
 
   // ------------------------------------------------------------
   // OPEN CHANNEL
@@ -135,17 +128,10 @@ void _handleMenuButtonPressed() {
   Future<void> _openChannelById(int channelId) async {
     try {
       final channel = await MatchRepository.getChannelById(channelId);
-
-      if (channel == null) {
-        _snack('Channel not found');
-        return;
-      }
+      if (channel == null) return;
 
       final url = channel['channel_link']?.toString() ?? '';
-      if (url.isEmpty) {
-        _snack('Channel link is empty');
-        return;
-      }
+      if (url.isEmpty) return;
 
       if (!mounted) return;
 
@@ -159,14 +145,7 @@ void _handleMenuButtonPressed() {
           ),
         ),
       );
-    } catch (e) {
-      _snack('Failed to open channel');
-    }
-  }
-
-  void _snack(String msg) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
+    } catch (_) {}
   }
 
   // ------------------------------------------------------------
@@ -178,52 +157,37 @@ void _handleMenuButtonPressed() {
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.tertiary,
-       scrolledUnderElevation: 0,
+        scrolledUnderElevation: 0,
         centerTitle: true,
-        title: Text('S P O R T E E', style: TextStyle( fontWeight: FontWeight.w700,fontSize: 20, color: Theme.of(context).colorScheme.inversePrimary,),),
-        // leading: IconButton(
-        //          icon: Icon(Icons.tv_rounded, color:Theme.of(context).colorScheme.inversePrimary,),
-        //          onPressed: () => Get.to(() => ALLChannelScreen()),
-        //        ),
+        title: Text(
+          'S P O R T E E',
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 20,
+            color: Theme.of(context).colorScheme.inversePrimary,
+          ),
+        ),
         leading: IconButton(
           onPressed: _handleMenuButtonPressed,
           icon: ValueListenableBuilder<AdvancedDrawerValue>(
             valueListenable: widget.advancedDrawerController,
             builder: (_, value, __) {
-              return AnimatedSwitcher(
-                duration: const Duration(milliseconds: 250),
-                child: Semantics(
-                  label: 'Menu',
-                  onTapHint: 'expand drawer',
-                  child: Icon(
-                    value.visible ? Icons.clear : Icons.menu,
-                    key: ValueKey<bool>(value.visible),
-                  ),
-                ),
-              );
+              return Icon(value.visible ? Icons.clear : Icons.menu);
             },
           ),
         ),
         actions: [
-          Row(
-            children: [
-              Transform.scale(
-                scale: 0.8,
-                child: Switch(
-                          value: Provider.of<ThemeProvider>(context).isDarkMode,
-                          onChanged: (value) =>
-                Provider.of<ThemeProvider>(context, listen: false).toggleTheme(),
-                        ),
-              ),
-              // IconButton(
-              //   icon: Icon(Icons.tv_rounded, color:Theme.of(context).colorScheme.inversePrimary,),
-              //   onPressed: () => Get.to(() => ALLChannelScreen()),
-              // ),
-            ],
-          )
+          Transform.scale(
+            scale: 0.8,
+            child: Switch(
+              value: Provider.of<ThemeProvider>(context).isDarkMode,
+              onChanged: (_) =>
+                  Provider.of<ThemeProvider>(context, listen: false)
+                      .toggleTheme(),
+            ),
+          ),
         ],
       ),
-      // drawer: const MyDrawer(),
       body: Column(
         children: [
           MatchCategoryTabs(
@@ -234,11 +198,12 @@ void _handleMenuButtonPressed() {
             child: FutureBuilder<Map<int, Team>>(
               future: _teamMapFuture,
               builder: (context, teamSnap) {
-                if (teamSnap.connectionState == ConnectionState.waiting) {
+                if (!teamSnap.hasData) {
                   return const Center(child: CircularProgressIndicator());
                 }
 
-                final teamMap = teamSnap.data ?? {};
+                final teamMap = teamSnap.data!;
+                final nowUtc = DateTime.now().toUtc();
 
                 return StreamBuilder<List<Map<String, dynamic>>>(
                   stream: _matchStream,
@@ -248,8 +213,6 @@ void _handleMenuButtonPressed() {
                         child: CircularProgressIndicator(),
                       );
                     }
-
-                    final nowUtc = DateTime.now().toUtc();
 
                     final matches = snap.data!
                         .where((m) {
@@ -261,33 +224,41 @@ void _handleMenuButtonPressed() {
                         })
                         .toList();
 
+                    // 🔥 SORTING LOGIC
                     matches.sort((a, b) {
                       final s1 =
-                          _parseDateTimeSafe(a['match_start_time']) ??
-                              nowUtc;
+                          _parseDateTimeSafe(a['match_start_time']) ?? nowUtc;
                       final s2 =
-                          _parseDateTimeSafe(b['match_start_time']) ??
-                              nowUtc;
+                          _parseDateTimeSafe(b['match_start_time']) ?? nowUtc;
 
                       final e1 =
                           buildEndUtcUsingStartLocal(s1, a['match_end_time']);
                       final e2 =
                           buildEndUtcUsingStartLocal(s2, b['match_end_time']);
 
-                      int status(Map<String, dynamic> m, DateTime s, DateTime e) {
-                        if (_isLiveValue(m['is_live'])) return 0;
-                        if (nowUtc.isBefore(s)) return 1;
-                        return 2;
+                      final aLive =
+                          nowUtc.isAfter(s1) && nowUtc.isBefore(e1);
+                      final bLive =
+                          nowUtc.isAfter(s2) && nowUtc.isBefore(e2);
+
+                      final aEnded = nowUtc.isAfter(e1);
+                      final bEnded = nowUtc.isAfter(e2);
+
+                      if (aLive && !bLive) return -1;
+                      if (!aLive && bLive) return 1;
+
+                      if (!aEnded && !bEnded) {
+                        return s1.compareTo(s2);
                       }
 
-                      return status(a, s1, e1)
-                          .compareTo(status(b, s2, e2));
+                      if (aEnded && !bEnded) return 1;
+                      if (!aEnded && bEnded) return -1;
+
+                      return 0;
                     });
 
                     if (matches.isEmpty) {
-                      return const Center(
-                        child: Text('No matches found'),
-                      );
+                      return const Center(child: Text('No matches found'));
                     }
 
                     return ListView.builder(
@@ -296,10 +267,10 @@ void _handleMenuButtonPressed() {
                       itemBuilder: (context, i) {
                         final m = matches[i];
 
-                        final Team teamA =
+                        final teamA =
                             teamMap[m['team_a_id']] ??
                                 Team(id: -1, name: 'TEAM A');
-                        final Team teamB =
+                        final teamB =
                             teamMap[m['team_b_id']] ??
                                 Team(id: -2, name: 'TEAM B');
 
@@ -310,27 +281,25 @@ void _handleMenuButtonPressed() {
                             buildEndUtcUsingStartLocal(start, m['match_end_time']);
 
                         return LiveMatchCard(
-                          matchName: m['match_name']?.toString() ?? '',
-                          matchCategories:
-                              m['match_categories']?.toString(),
-                          teamA: teamA,
-                          teamB: teamB,
-                          isLive: _isLiveValue(m['is_live']),
-                          matchStartTime: start,
-                          matchEndTime: end,
-                          hideWhenEnded: false,
-                          onTap: () {
-                            final raw = m['live_video_url'];
-                            final id = raw is int
-                                ? raw
-                                : int.tryParse(raw?.toString() ?? '');
-                            if (id != null) {
-                              _openChannelById(id);
-                            } else {
-                              _snack('Channel not available');
-                            }
-                          },
-                        );
+  matchName: m['match_name']?.toString() ?? '',
+  matchCategories: m['match_categories']?.toString(),
+  teamA: teamA,
+  teamB: teamB,
+  matchStartTime: start,
+  matchEndTime: end,
+  forceLive: m['is_live'] == true, // ✅ MAGIC LINE
+  hideWhenEnded: false,
+  onTap: () {
+    final raw = m['live_video_url'];
+    final id = raw is int
+        ? raw
+        : int.tryParse(raw?.toString() ?? '');
+    if (id != null) {
+      _openChannelById(id);
+    }
+  },
+);
+
                       },
                     );
                   },

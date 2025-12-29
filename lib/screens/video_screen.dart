@@ -120,8 +120,10 @@ class VideoScreenState extends State<VideoScreen> with WidgetsBindingObserver {
       allowPlaybackSpeedChanging: false,
       allowMuting: false,
       autoInitialize: true,
+      
       allowedScreenSleep: false,
-      aspectRatio: videoCtrl.value.aspectRatio,
+      aspectRatio: 16 / 9,
+      // aspectRatio: videoCtrl.value.aspectRatio,
       deviceOrientationsOnEnterFullScreen: const [
         DeviceOrientation.landscapeLeft,
         DeviceOrientation.landscapeRight,
@@ -223,43 +225,44 @@ class VideoScreenState extends State<VideoScreen> with WidgetsBindingObserver {
           child: Column(
             children: [
               // ---------------- VIDEO ----------------
-              SizedBox(
-                width: double.infinity,
-                height: MediaQuery.of(context).size.width * 9 / 16,
-                child: Container(
-                  color: Colors.black, // ✅ ALWAYS BLACK
-                  child: Stack(
-                    children: [
-                      // 🔹 PLACEHOLDER (FIXED)
-                      if (_currentPlaceholder != null &&
-                          (!playerReady || _forceShowPlaceholder))
-                        Center(
-                          child: AnimatedOpacity(
-                            opacity: 0.4,
-                            duration: const Duration(milliseconds: 250),
-                            child: _currentPlaceholder!.startsWith('http')
-                                ? Image.network(
-                                    _currentPlaceholder!,
-                                    width: 160,
-                                    fit: BoxFit.contain,
-                                  )
-                                : Image.asset(
-                                    _currentPlaceholder!,
-                                    width: 160,
-                                    fit: BoxFit.contain,
-                                  ),
-                          ),
-                        ),
+              // ---------------- VIDEO ----------------
+AspectRatio(
+  aspectRatio: 16 / 9, // ✅ FORCE 16:9
+  child: Container(
+    color: Colors.black,
+    child: Stack(
+      children: [
+        // 🔹 PLACEHOLDER
+        if (_currentPlaceholder != null &&
+            (!playerReady || _forceShowPlaceholder))
+          Center(
+            child: AnimatedOpacity(
+              opacity: 0.4,
+              duration: const Duration(milliseconds: 250),
+              child: _currentPlaceholder!.startsWith('http')
+                  ? Image.network(
+                      _currentPlaceholder!,
+                      width: 160,
+                      fit: BoxFit.contain,
+                    )
+                  : Image.asset(
+                      _currentPlaceholder!,
+                      width: 160,
+                      fit: BoxFit.contain,
+                    ),
+            ),
+          ),
 
-                      // 🔹 VIDEO PLAYER
-                      if (playerReady)
-                        Positioned.fill(
-                          child: Chewie(controller: _chewieController!),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
+        // 🔹 VIDEO PLAYER
+        if (playerReady)
+          Positioned.fill(
+            child: Chewie(controller: _chewieController!),
+          ),
+      ],
+    ),
+  ),
+),
+
 
               // ---------------- CHANNEL LISTS ----------------
               Expanded(
