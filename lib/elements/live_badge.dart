@@ -38,7 +38,7 @@ class _LiveBadgeState extends State<LiveBadge>
         ),
         const SizedBox(width: 6),
         const Text(
-          'LIVE',
+          'WATCH LIVE',
           style: TextStyle(
             color: Colors.redAccent,
             fontWeight: FontWeight.bold,

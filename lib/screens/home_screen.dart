@@ -18,18 +18,29 @@ class _ALLChannelScreenState extends State<ALLChannelScreen> {
 
   @override
   void initState() {
+    
     super.initState();
     _channelStream = ChannelRepository.streamChannels();
   }
 
   @override
   Widget build(BuildContext context) {
+  
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
            backgroundColor: Theme.of(context).colorScheme.tertiary,
         centerTitle: true,
-         title: Text('All Channels', style: TextStyle( fontWeight: FontWeight.w700,fontSize: 20, color: Theme.of(context).colorScheme.inversePrimary,),),
+         
+         title: Text('Live Channels', style: TextStyle( fontWeight: FontWeight.w700,fontSize: 18, color: Theme.of(context).colorScheme.inversePrimary,),),
+         leading: IconButton(
+  icon: Icon(
+    Icons.arrow_back_ios_new,
+    color: Theme.of(context).colorScheme.onSurface,
+    size: 18,
+  ),
+  onPressed: () => Navigator.pop(context),
+),
       ),
       body: StreamBuilder<List<Map<String, dynamic>>>(
         stream: _channelStream,
@@ -52,9 +63,9 @@ class _ALLChannelScreenState extends State<ALLChannelScreen> {
               itemCount: channels.length,
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 16 / 10,
+  crossAxisSpacing: 14,
+  mainAxisSpacing: 14,
+  childAspectRatio: .99,
               ),
               itemBuilder: (context, index) {
                 final channel = channels[index];
@@ -102,21 +113,87 @@ class _ChannelCard extends StatelessWidget {
   final VoidCallback onTap;
 
   const _ChannelCard({
+    super.key,
     required this.channelMap,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(16),
-      child: Material(
-        color: Colors.white,
-        child: InkWell(
-          onTap: onTap,
-          child: AspectRatio(
-            aspectRatio: 16 / 10,
-            child: _buildImage(),
+    final theme = Theme.of(context);
+    return InkWell(
+      borderRadius: BorderRadius.circular(22),
+      onTap: onTap,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(22),
+          color: theme.colorScheme.tertiary,
+          
+          // boxShadow: [
+          //   BoxShadow(
+          //     color:  Color.fromARGB(255, 155, 238, 2).withOpacity(.12),
+          //     blurRadius: 20,
+          //     spreadRadius: 1,
+          //   )
+          // ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+
+              /// Channel Number
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(10),
+                  color:Color.fromARGB(255, 155, 238, 2).withOpacity(.12),
+                  border: Border.all(
+                    color:  Color.fromARGB(255, 155, 238, 2).withOpacity(.4),
+                  ),
+                ),
+                child: Text(
+                  "${(channelMap["id"] ?? 0).toString().padLeft(3, "0")}",
+                  style: const TextStyle(
+                    color: Color.fromARGB(255, 155, 238, 2),
+                    fontSize: 10,
+      fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+
+
+              Expanded(
+                child: Center(
+                  child: _buildImage(),
+                ),
+              ),
+
+             
+
+              Text(
+                channelMap["channel_name"] ?? "",
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+
+            
+
+              Text(
+                channelMap["channel_categories"] ?? "Sports",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                ),
+              ),
+            ],
           ),
         ),
       ),
@@ -124,29 +201,37 @@ class _ChannelCard extends StatelessWidget {
   }
 
   Widget _buildImage() {
-    final raw = channelMap['channel_image'];
-    final image = raw == null ? '' : raw.toString().trim();
+    final image =
+        (channelMap["channel_image"] ?? "").toString().trim();
 
     if (image.isEmpty) {
-      return const Center(
-        child: Icon(Icons.tv, size: 40, color: Colors.black26),
+      return const Icon(
+        Icons.tv,
+        size: 65,
+        color: Colors.white38,
       );
     }
 
     final isNetwork =
-        image.startsWith('http://') || image.startsWith('https://');
+        image.startsWith("http://") ||
+            image.startsWith("https://");
 
-    return isNetwork
+    return Center(
+  child: SizedBox(
+   
+    height: 60,
+    child: isNetwork
         ? Image.network(
             image,
-            fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => const Center(
-              child: Icon(Icons.broken_image, size: 36),
-            ),
+            fit: BoxFit.contain,
+            errorBuilder: (_, __, ___) =>
+                const Icon(Icons.broken_image),
           )
         : Image.asset(
             image,
-            fit: BoxFit.cover,
-          );
+            fit: BoxFit.contain,
+          ),
+  ),
+);
   }
 }

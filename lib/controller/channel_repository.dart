@@ -5,21 +5,23 @@ class ChannelRepository {
 
   static final _client = Supabase.instance.client;
 
-  static Stream<List<Map<String, dynamic>>> streamChannels() {
+ static Stream<List<Map<String, dynamic>>> streamChannels() {
   return _client
       .from('channel_list')
       .stream(primaryKey: ['id'])
+      .eq('is_active', true) // ✅ ONLY ACTIVE CHANNELS
       .map((rows) {
         final list = rows
             .map((e) => Map<String, dynamic>.from(e))
             .toList();
 
-        // ✅ SORT BY ID (ASCENDING)
-        list.sort((a, b) =>
-            (a['id'] as int).compareTo(b['id'] as int));
+        list.sort(
+          (a, b) => (a['id'] as int).compareTo(b['id'] as int),
+        );
 
         return list;
       });
 }
+
 
 }

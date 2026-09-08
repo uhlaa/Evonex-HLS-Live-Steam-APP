@@ -1,11 +1,10 @@
-import 'package:evonex/controller/channel_repository.dart';
-import 'package:evonex/elements/vertical_channel_list.dart';
+
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 import 'package:chewie/chewie.dart';
 
-import '../elements/horizontal_channel.dart';
 
 class PiPManager {
   static const MethodChannel _channel = MethodChannel('pip_channel');
@@ -51,30 +50,50 @@ class VideoScreenState extends State<VideoScreen> with WidgetsBindingObserver {
 
   VoidCallback? _videoListener;
 
-  late final Stream<List<Map<String, dynamic>>> _channelStream;
 
   // ------------------------------------------------------------
   // INIT / DISPOSE
   // ------------------------------------------------------------
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-
-    _channelStream = ChannelRepository.streamChannels();
-
-    currentUrl = widget.url;
-    _currentPlaceholder = widget.placeholderImage;
-
-    _initializeForUrl(currentUrl);
-  }
+ 
 
   @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    _cleanUpControllers();
-    super.dispose();
-  }
+void initState() {
+  super.initState();
+
+  WidgetsBinding.instance.addObserver(this);
+
+  SystemChrome.setEnabledSystemUIMode(
+    SystemUiMode.immersiveSticky,
+  );
+
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.landscapeLeft,
+    DeviceOrientation.landscapeRight,
+  ]);
+
+  currentUrl = widget.url;
+  _currentPlaceholder = widget.placeholderImage;
+
+  _initializeForUrl(currentUrl);
+}
+
+@override
+void dispose() {
+  WidgetsBinding.instance.removeObserver(this);
+
+  SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+  ]);
+
+  SystemChrome.setEnabledSystemUIMode(
+    SystemUiMode.manual,
+    overlays: SystemUiOverlay.values,
+  );
+
+  _cleanUpControllers();
+
+  super.dispose();
+}
 
   // ------------------------------------------------------------
   // VIDEO INIT
@@ -118,17 +137,23 @@ class VideoScreenState extends State<VideoScreen> with WidgetsBindingObserver {
       looping: true,
       isLive: true,
       allowPlaybackSpeedChanging: false,
+    fullScreenByDefault: false,
+allowFullScreen: false,
       allowMuting: false,
       autoInitialize: true,
-      
+  //      systemOverlaysAfterFullScreen: const [
+  //   SystemUiOverlay.top,
+  //   SystemUiOverlay.bottom,
+  // ],
       allowedScreenSleep: false,
-      aspectRatio: 16 / 9,
+       aspectRatio: MediaQuery.of(context).size.width /
+      MediaQuery.of(context).size.height,
       // aspectRatio: videoCtrl.value.aspectRatio,
-      deviceOrientationsOnEnterFullScreen: const [
-        DeviceOrientation.landscapeLeft,
-        DeviceOrientation.landscapeRight,
-      ],
-      deviceOrientationsAfterFullScreen: const [DeviceOrientation.portraitUp],
+      // deviceOrientationsOnEnterFullScreen: const [
+      //   DeviceOrientation.landscapeLeft,
+      //   DeviceOrientation.landscapeRight,
+      // ],
+      // deviceOrientationsAfterFullScreen: const [DeviceOrientation.portraitUp],
     );
 
     if (mounted) setState(() {});
@@ -200,81 +225,69 @@ class VideoScreenState extends State<VideoScreen> with WidgetsBindingObserver {
     }
   }
 
-  Future<bool> _onWillPop() async {
-    if (_navigatingAway) return true;
-    _navigatingAway = true;
-    await _cleanUpControllers();
-    return true;
-  }
+  // Future<bool> _onWillPop() async {
+  //   if (_navigatingAway) return true;
+  //   _navigatingAway = true;
+  //   await _cleanUpControllers();
+  //   return true;
+  // }
+ Future<bool> _onWillPop() async {
+  if (_navigatingAway) return true;
+
+  _navigatingAway = true;
+
+  await _cleanUpControllers();
+
+  return true;
+}
 
   // ------------------------------------------------------------
   // UI
   // ------------------------------------------------------------
-  @override
-  Widget build(BuildContext context) {
-    final playerReady =
-        _chewieController != null &&
-        _videoController != null &&
-        _videoController!.value.isInitialized;
+ @override
+Widget build(BuildContext context) {
+  final playerReady =
+      _chewieController != null &&
+      _videoController != null &&
+      _videoController!.value.isInitialized;
 
-    return WillPopScope(
-      onWillPop: _onWillPop,
-      child: Scaffold(
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        body: SafeArea(
-          child: Column(
-            children: [
-              // ---------------- VIDEO ----------------
-              // ---------------- VIDEO ----------------
-AspectRatio(
-  aspectRatio: 16 / 9, // ✅ FORCE 16:9
-  child: Container(
-    color: Colors.black,
-    child: Stack(
-      children: [
-        // 🔹 PLACEHOLDER
-        if (_currentPlaceholder != null &&
-            (!playerReady || _forceShowPlaceholder))
-          Center(
-            child: AnimatedOpacity(
-              opacity: 0.4,
-              duration: const Duration(milliseconds: 250),
-              child: _currentPlaceholder!.startsWith('http')
-                  ? Image.network(
-                      _currentPlaceholder!,
-                      width: 160,
-                      fit: BoxFit.contain,
-                    )
-                  : Image.asset(
-                      _currentPlaceholder!,
-                      width: 160,
-                      fit: BoxFit.contain,
-                    ),
-            ),
-          ),
-
-        // 🔹 VIDEO PLAYER
-        if (playerReady)
-          Positioned.fill(
-            child: Chewie(controller: _chewieController!),
-          ),
-      ],
-    ),
-  ),
-),
-
-
-              // ---------------- CHANNEL LISTS ----------------
-              Expanded(
-                child:    Padding(
-                  padding: const EdgeInsets.symmetric( vertical: 16, horizontal: 16),
-                  child: VerticalChannelList(),
-                )
+  return WillPopScope(
+    onWillPop: _onWillPop,
+    child: Scaffold(
+      backgroundColor: Colors.black,
+      body: SizedBox.expand(
+        child: Stack(
+          children: [
+            if (_currentPlaceholder != null &&
+                (!playerReady || _forceShowPlaceholder))
+              Center(
+                child: AnimatedOpacity(
+                  opacity: 0.4,
+                  duration: const Duration(milliseconds: 250),
+                  child: _currentPlaceholder!.startsWith('http')
+                      ? Image.network(
+                          _currentPlaceholder!,
+                          width: 160,
+                          fit: BoxFit.contain,
+                        )
+                      : Image.asset(
+                          _currentPlaceholder!,
+                          width: 160,
+                          fit: BoxFit.contain,
+                        ),
+                ),
               ),
-            ],
-          ),
+
+            if (playerReady)
+              Positioned.fill(
+                child: Chewie(
+                  controller: _chewieController!,
+                ),
+              ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 }

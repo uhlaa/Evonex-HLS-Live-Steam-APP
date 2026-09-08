@@ -52,11 +52,28 @@ dependencies:
   shared_preferences: ^2.5.4
   flutter_advanced_drawer: ^1.5.0
   iconsax_plus: ^1.0.0
+  iconsax: ^0.0.8
+  
+  lottie: ^3.3.3
+  wakelock_plus: ^1.6.1
+
+ 
+  
 
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+
+  flutter_launcher_icons: "^0.14.4"
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/images/sporteeappicon.png"
+  adaptive_icon_background: "#FFFFFF"   # Android adaptive icon এর জন্য
+  adaptive_icon_foreground: "assets/images/sporteeappicon.png"
+
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

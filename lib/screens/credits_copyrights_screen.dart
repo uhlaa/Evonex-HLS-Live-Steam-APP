@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_advanced_drawer/flutter_advanced_drawer.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+
+import 'package:lottie/lottie.dart';
 
 class CreditsCopyrightScreen extends StatefulWidget {
   final AdvancedDrawerController advancedDrawerController;
@@ -41,10 +42,10 @@ class _CreditsCopyrightScreenState
               widget.advancedDrawerController.toggleDrawer(),
         ),
         title: Text(
-          "Credits & Copyright",
+          "About",
           style: TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 20,
+            fontWeight: FontWeight.w700,
+            fontSize: 18,
             color: theme.colorScheme.onSurface,
           ),
         ),
@@ -53,7 +54,7 @@ class _CreditsCopyrightScreenState
 
       /// ✅ SINGLE SCROLL (no Spacer)
       body: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 40),
+        padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 60),
         child: Column(
           children: [
             SingleChildScrollView(
@@ -62,12 +63,14 @@ class _CreditsCopyrightScreenState
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   /// SHIELD IMAGE
-                  SvgPicture.asset(
-                    "assets/images/shield.svg",
-                    height: 110,
-                  ),
+                 Lottie.asset(
+  "assets/images/vidplay.json",
+  height: 110,
+  repeat: true,
+  fit: BoxFit.contain,
+),
             
-                  const SizedBox(height: 30),
+                  const SizedBox(height: 70),
             
                   /// CARD
                   Container(
@@ -88,9 +91,9 @@ class _CreditsCopyrightScreenState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "Copyright, Credits & Partnerships:",
+                          "Credits & Copyright",
                           style: TextStyle(
-                            fontSize: 15,
+                            fontSize: 16,
                             fontWeight: FontWeight.w600,
                             color: theme.colorScheme.onSurface,
                           ),
@@ -113,12 +116,7 @@ class _CreditsCopyrightScreenState
                           text:
                               "Credits and copyrights belong to the original content owners and streaming providers.",
                         ),
-                        _divider(),
-            
-                        const _Paragraph(
-                          text:
-                              "This application is supported through partnerships that help cover server infrastructure, maintenance, and ongoing development.",
-                        ),
+                       
                       ],
                     ),
                   ),
@@ -150,7 +148,7 @@ class _CreditsCopyrightScreenState
                     TextSpan(
                       text: "support@sporteeapp.com",
                       style: TextStyle(
-                        color: Color(0xFFFF4C5B),
+                        color:  Color.fromARGB(255, 155, 238, 2),
                         fontWeight: FontWeight.w500,
                       ),
                     ),

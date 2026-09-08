@@ -1,13 +1,16 @@
 import 'package:evonex/controller/match_repository.dart';
+import 'package:evonex/screens/home_screen.dart';
 import 'package:evonex/theme/theme_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_advanced_drawer/flutter_advanced_drawer.dart';
+import 'package:flutter_svg/svg.dart';
 import 'package:get/get.dart';
 import 'package:provider/provider.dart';
 
 import '../elements/live_match_card.dart';
 import '../elements/match_tab.dart';
 import '../screens/video_screen.dart';
+import 'package:iconsax/iconsax.dart';
 
 class MatchHomeScreen extends StatefulWidget {
   final AdvancedDrawerController advancedDrawerController;
@@ -25,6 +28,7 @@ class _MatchHomeScreenState extends State<MatchHomeScreen> {
   late final Stream<List<Map<String, dynamic>>> _matchStream;
   late final Future<Map<int, Team>> _teamMapFuture;
 
+  /// ALL / CRICKET / FOOTBALL
   String _currentFilter = 'ALL';
 
   @override
@@ -73,54 +77,45 @@ class _MatchHomeScreenState extends State<MatchHomeScreen> {
   }
 
   DateTime buildEndUtcUsingStartLocal(DateTime startUtc, dynamic endRaw) {
-  // 1️⃣ End time missing → fallback
-  if (endRaw == null) {
-    return startUtc.add(const Duration(hours: 4));
-  }
-
-  final endStr = endRaw.toString();
-
-  // 2️⃣ Full datetime (YYYY-MM-DD ...)
-  final full = DateTime.tryParse(endStr);
-  if (full != null) {
-    final endUtc = full.toUtc();
-    return endUtc.isAfter(startUtc)
-        ? endUtc
-        : startUtc.add(const Duration(hours: 4));
-  }
-
-  // 3️⃣ TIME ONLY (HH:mm:ss) ⭐ MAIN FIX
-  final parts = endStr.split(':');
-  if (parts.length >= 2) {
-    final h = int.tryParse(parts[0]) ?? 0;
-    final m = int.tryParse(parts[1]) ?? 0;
-    final s = parts.length > 2 ? int.tryParse(parts[2]) ?? 0 : 0;
-
-    final startLocal = startUtc.toLocal();
-
-    final endLocal = DateTime(
-      startLocal.year,
-      startLocal.month,
-      startLocal.day,
-      h,
-      m,
-      s,
-    );
-
-    final endUtc = endLocal.toUtc();
-
-    // ⚠️ if end <= start → next day
-    if (!endUtc.isAfter(startUtc)) {
-      return endUtc.add(const Duration(days: 1));
+    if (endRaw == null) {
+      return startUtc.add(const Duration(hours: 4));
     }
 
-    return endUtc;
+    final endStr = endRaw.toString();
+
+    final full = DateTime.tryParse(endStr);
+    if (full != null) {
+      final endUtc = full.toUtc();
+      return endUtc.isAfter(startUtc)
+          ? endUtc
+          : startUtc.add(const Duration(hours: 4));
+    }
+
+    final parts = endStr.split(':');
+    if (parts.length >= 2) {
+      final h = int.tryParse(parts[0]) ?? 0;
+      final m = int.tryParse(parts[1]) ?? 0;
+      final s = parts.length > 2 ? int.tryParse(parts[2]) ?? 0 : 0;
+
+      final startLocal = startUtc.toLocal();
+      final endLocal = DateTime(
+        startLocal.year,
+        startLocal.month,
+        startLocal.day,
+        h,
+        m,
+        s,
+      );
+
+      final endUtc = endLocal.toUtc();
+      if (!endUtc.isAfter(startUtc)) {
+        return endUtc.add(const Duration(days: 1));
+      }
+      return endUtc;
+    }
+
+    return startUtc.add(const Duration(hours: 8));
   }
-
-  // 4️⃣ ultimate fallback
-  return startUtc.add(const Duration(hours: 4));
-}
-
 
   // ------------------------------------------------------------
   // OPEN CHANNEL
@@ -159,14 +154,14 @@ class _MatchHomeScreenState extends State<MatchHomeScreen> {
         backgroundColor: Theme.of(context).colorScheme.tertiary,
         scrolledUnderElevation: 0,
         centerTitle: true,
-        title: Text(
-          'S P O R T E E',
-          style: TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: 20,
-            color: Theme.of(context).colorScheme.inversePrimary,
-          ),
-        ),
+        title: SvgPicture.asset(
+  "assets/images/Sportee.svg",
+  height: 18,
+  colorFilter: ColorFilter.mode(
+   Color.fromARGB(255, 255, 255, 255),
+    BlendMode.srcIn,
+  ),
+),
         leading: IconButton(
           onPressed: _handleMenuButtonPressed,
           icon: ValueListenableBuilder<AdvancedDrawerValue>(
@@ -177,15 +172,10 @@ class _MatchHomeScreenState extends State<MatchHomeScreen> {
           ),
         ),
         actions: [
-          Transform.scale(
-            scale: 0.8,
-            child: Switch(
-              value: Provider.of<ThemeProvider>(context).isDarkMode,
-              onChanged: (_) =>
-                  Provider.of<ThemeProvider>(context, listen: false)
-                      .toggleTheme(),
-            ),
-          ),
+          IconButton(onPressed: (){
+            Get.to(ALLChannelScreen());
+
+          }, icon: Icon(Icons.tv_rounded))
         ],
       ),
       body: Column(
@@ -206,6 +196,7 @@ class _MatchHomeScreenState extends State<MatchHomeScreen> {
                 final nowUtc = DateTime.now().toUtc();
 
                 return StreamBuilder<List<Map<String, dynamic>>>(
+                  key: ValueKey(_currentFilter), // 🔥 FORCE LOADING ON TAB CHANGE
                   stream: _matchStream,
                   builder: (context, snap) {
                     if (!snap.hasData) {
@@ -224,7 +215,7 @@ class _MatchHomeScreenState extends State<MatchHomeScreen> {
                         })
                         .toList();
 
-                    // 🔥 SORTING LOGIC
+                    // 🔥 SORTING: LIVE → UPCOMING → ENDED
                     matches.sort((a, b) {
                       final s1 =
                           _parseDateTimeSafe(a['match_start_time']) ?? nowUtc;
@@ -262,7 +253,8 @@ class _MatchHomeScreenState extends State<MatchHomeScreen> {
                     }
 
                     return ListView.builder(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding:
+                          const EdgeInsets.symmetric(horizontal: 16),
                       itemCount: matches.length,
                       itemBuilder: (context, i) {
                         final m = matches[i];
@@ -278,28 +270,31 @@ class _MatchHomeScreenState extends State<MatchHomeScreen> {
                             _parseDateTimeSafe(m['match_start_time']) ??
                                 nowUtc;
                         final end =
-                            buildEndUtcUsingStartLocal(start, m['match_end_time']);
+                            buildEndUtcUsingStartLocal(
+                                start, m['match_end_time']);
 
                         return LiveMatchCard(
-  matchName: m['match_name']?.toString() ?? '',
-  matchCategories: m['match_categories']?.toString(),
-  teamA: teamA,
-  teamB: teamB,
-  matchStartTime: start,
-  matchEndTime: end,
-  forceLive: m['is_live'] == true, // ✅ MAGIC LINE
-  hideWhenEnded: false,
-  onTap: () {
-    final raw = m['live_video_url'];
-    final id = raw is int
-        ? raw
-        : int.tryParse(raw?.toString() ?? '');
-    if (id != null) {
-      _openChannelById(id);
-    }
-  },
-);
-
+                          matchName:
+                              m['match_name']?.toString() ?? '',
+                          matchCategories:
+                              m['match_categories']?.toString(),
+                          teamA: teamA,
+                          teamB: teamB,
+                          matchStartTime: start,
+                          matchEndTime: end,
+                          forceLive: m['is_live'] == true,
+                          hideWhenEnded: false,
+                          onTap: () {
+                            final raw = m['live_video_url'];
+                            final id = raw is int
+                                ? raw
+                                : int.tryParse(
+                                    raw?.toString() ?? '');
+                            if (id != null) {
+                              _openChannelById(id);
+                            }
+                          },
+                        );
                       },
                     );
                   },

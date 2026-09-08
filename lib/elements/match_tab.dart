@@ -60,7 +60,7 @@ class _MatchCategoryTabsState extends State<MatchCategoryTabs> {
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   color: isSelected
-                      ? const Color(0xFFFF4C5B) // red active pill
+                      ? const Color.fromARGB(255, 155, 238, 2) // red active pill
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(11),
                 ),
@@ -68,7 +68,7 @@ class _MatchCategoryTabsState extends State<MatchCategoryTabs> {
                   label,
                   style: TextStyle(
                     fontSize: 12,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w900,
                     color: isSelected ? Colors.white :Theme.of(context).colorScheme.inversePrimary,
                   ),
                 ),

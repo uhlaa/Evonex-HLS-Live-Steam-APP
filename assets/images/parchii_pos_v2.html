@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Parchii POS</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --brand: #F97316;
+  --brand-deep: #EA580C;
+  --brand-soft: #FFF7ED;
+  --brand-muted: #FED7AA;
+  --surface: #FFFFFF;
+  --bg: #F8F8F8;
+  --border: #EBEBEB;
+  --border-strong: #D4D4D4;
+  --text-primary: #111111;
+  --text-secondary: #6B6B6B;
+  --text-muted: #A3A3A3;
+  --green: #16A34A;
+  --green-bg: #F0FDF4;
+  --red: #DC2626;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+  --radius: 10px;
+  --radius-sm: 6px;
+  --radius-lg: 14px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Inter', 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--text-primary);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-size: 13px;
+}
+
+/* ── TOPBAR ── */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface);
+  padding: 0 20px;
+  height: 52px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.logo {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.5px;
+  color: var(--text-primary);
+  margin-right: 4px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.logo-accent { color: var(--brand); }
+.logo-ii { color: var(--brand); }
+
+.search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.search-wrap .icon {
+  position: absolute;
+  left: 9px;
+  color: var(--text-muted);
+  font-size: 12px;
+  pointer-events: none;
+}
+.topbar-input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px 6px 28px;
+  font-size: 12.5px;
+  color: var(--text-primary);
+  outline: none;
+  width: 148px;
+  font-family: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.topbar-input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(249,115,22,0.12); }
+.topbar-input::placeholder { color: var(--text-muted); }
+
+.divider-v { width: 1px; height: 22px; background: var(--border); margin: 0 4px; }
+.spacer { flex: 1; }
+
+.t-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.12s;
+  white-space: nowrap;
+}
+.t-btn:hover { border-color: var(--border-strong); color: var(--text-primary); }
+.t-btn.primary { background: var(--brand); color: #fff; border-color: var(--brand); font-weight: 600; }
+.t-btn.primary:hover { background: var(--brand-deep); border-color: var(--brand-deep); }
+.t-btn.ghost-danger { color: var(--red); border-color: #FCA5A5; }
+.t-btn.ghost-danger:hover { background: #FEF2F2; }
+.t-btn.dark { background: #1A1A1A; color: #fff; border-color: #1A1A1A; }
+.t-btn.dark:hover { background: #333; }
+
+/* ── MAIN ── */
+.main { display: flex; flex: 1; overflow: hidden; }
+
+/* ── SIDENAV ── */
+.sidenav {
+  width: 210px;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  flex-shrink: 0;
+  padding: 10px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.sidenav::-webkit-scrollbar { width: 0; }
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.nav-item:hover { background: var(--brand-soft); }
+.nav-item.active { background: var(--brand-soft); }
+.nav-icon-wrap {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  flex-shrink: 0;
+  transition: background 0.12s;
+}
+.nav-item.active .nav-icon-wrap { background: var(--brand); }
+.nav-item.active .nav-icon-wrap svg { color: #fff; }
+.nav-text { flex: 1; min-width: 0; }
+.nav-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.2;
+}
+.nav-item.active .nav-label { color: var(--brand-deep); }
+.nav-count {
+  font-size: 10.5px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+.nav-badge {
+  background: var(--bg);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 20px;
+  padding: 1px 7px;
+  border: 1px solid var(--border);
+}
+.nav-item.active .nav-badge { background: var(--brand-muted); color: var(--brand-deep); border-color: var(--brand-muted); }
+
+/* ── CONTENT ── */
+.content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.content::-webkit-scrollbar { width: 4px; }
+.content::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 4px; }
+
+.content-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.2px;
+}
+.section-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 1px;
+}
+.search-bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.search-bar .icon { position: absolute; left: 9px; color: var(--text-muted); font-size: 12px; }
+.search-bar input {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 6px 14px 6px 28px;
+  font-size: 12px;
+  outline: none;
+  font-family: inherit;
+  width: 160px;
+  color: var(--text-primary);
+  transition: border-color 0.15s;
+}
+.search-bar input:focus { border-color: var(--brand); }
+.search-bar input::placeholder { color: var(--text-muted); }
+
+/* ── ITEM GRID ── */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(152px, 1fr));
+  gap: 10px;
+}
+
+.item-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1.5px solid var(--border);
+  padding: 14px 13px 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.1s;
+  position: relative;
+  overflow: hidden;
+  min-height: 96px;
+}
+.item-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: transparent;
+  transition: background 0.15s;
+}
+.item-card:hover { border-color: var(--brand); box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.item-card:hover::before { background: var(--brand); }
+.item-card.in-order { border-color: var(--brand); background: var(--brand-soft); }
+.item-card.in-order::before { background: var(--brand); }
+.item-card:active { transform: translateY(0); }
+
+.card-top { display: flex; align-items: flex-start; gap: 8px; }
+.veg-indicator {
+  width: 14px; height: 14px;
+  border: 1.5px solid var(--green);
+  border-radius: 2px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; margin-top: 1px;
+}
+.veg-dot-inner {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--green);
+}
+.item-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.35;
+  flex: 1;
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+}
+.item-price {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--brand-deep);
+}
+.item-price-sym { font-size: 10px; font-weight: 600; }
+
+.add-indicator {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--brand);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+  line-height: 1;
+  font-weight: 300;
+  opacity: 0;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+.item-card:hover .add-indicator { opacity: 1; }
+.item-card.in-order .add-indicator { opacity: 1; background: var(--brand-deep); }
+
+.qty-pill {
+  position: absolute;
+  top: 10px; right: 10px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  border-radius: 20px;
+  padding: 2px 7px;
+  min-width: 20px;
+  text-align: center;
+}
+
+/* ── RIGHT PANEL ── */
+.rightpanel {
+  width: 268px;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.rp-top { padding: 12px 12px 0; }
+
+.order-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3px;
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  padding: 3px;
+}
+.tab {
+  text-align: center;
+  padding: 5px 4px;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: all 0.12s;
+  border: none;
+  background: transparent;
+  font-family: inherit;
+}
+.tab.active { background: var(--surface); color: var(--brand-deep); box-shadow: var(--shadow-sm); }
+
+.rp-meta {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.meta-btn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.12s;
+}
+.meta-btn:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-soft); }
+
+.rp-divider { height: 1px; background: var(--border); margin: 10px 0 0; }
+
+/* order list */
+.order-col-head {
+  display: grid;
+  grid-template-columns: 1fr 76px 48px;
+  padding: 8px 16px 4px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.order-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 10px;
+}
+.order-list::-webkit-scrollbar { width: 3px; }
+.order-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+.order-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  gap: 8px;
+  color: var(--text-muted);
+  padding: 20px;
+  text-align: center;
+}
+.order-empty-icon { font-size: 32px; opacity: 0.4; }
+.order-empty-text { font-size: 12.5px; font-weight: 500; }
+.order-empty-sub { font-size: 11.5px; }
+
+.order-row {
+  display: grid;
+  grid-template-columns: 1fr 76px 48px;
+  align-items: center;
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--border);
+  gap: 2px;
+}
+.order-row:last-child { border-bottom: none; }
+.row-name-wrap { display: flex; align-items: flex-start; gap: 4px; min-width: 0; }
+
+.del-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 1px 2px;
+  font-size: 11px;
+  border-radius: 4px;
+  transition: all 0.12s;
+  flex-shrink: 0;
+  margin-top: 1px;
+  display: flex; align-items: center; justify-content: center;
+}
+.del-btn:hover { color: var(--red); background: #FEF2F2; }
+
+.row-name {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-primary);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.qty-ctrl {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  justify-content: center;
+}
+.qbtn {
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface);
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-secondary);
+  transition: all 0.12s;
+  font-family: inherit;
+}
+.qbtn:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-soft); }
+.qval { font-size: 12.5px; font-weight: 700; min-width: 16px; text-align: center; color: var(--text-primary); }
+.row-amt { font-size: 13px; font-weight: 700; text-align: right; color: var(--text-primary); }
+
+/* totals */
+.order-footer {
+  border-top: 1px solid var(--border);
+  padding: 10px 16px;
+}
+.total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 0;
+}
+.total-label { font-size: 12px; color: var(--text-secondary); }
+.total-val { font-size: 12px; font-weight: 600; color: var(--text-primary); }
+.grand-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0 2px;
+  margin-top: 4px;
+  border-top: 1px dashed var(--border-strong);
+}
+.grand-label { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.grand-val { font-size: 16px; font-weight: 800; color: var(--brand-deep); }
+
+.panel-actions {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px 12px;
+}
+.btn-clear-ord {
+  flex: 1;
+  padding: 10px;
+  border: 1.5px solid var(--border-strong);
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.12s;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
+}
+.btn-clear-ord:hover { border-color: var(--red); color: var(--red); background: #FEF2F2; }
+.btn-place-ord {
+  flex: 2;
+  padding: 10px;
+  background: var(--brand);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 0.12s;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+}
+.btn-place-ord:hover { background: var(--brand-deep); }
+
+/* item count chip */
+.item-count-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--brand-soft);
+  border: 1px solid var(--brand-muted);
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--brand-deep);
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="logo">
+    <span>PARCHI</span><span class="logo-ii">II</span>&nbsp;<span style="color:var(--text-muted);font-weight:500;font-size:13px;">POS</span>
+  </div>
+  <div class="divider-v"></div>
+  <div class="search-wrap">
+    <span class="icon">🔍</span>
+    <input class="topbar-input" type="text" placeholder="Search item…" id="top-search" oninput="filterGrid(this.value)"/>
+  </div>
+  <div class="search-wrap">
+    <span class="icon">🪑</span>
+    <input class="topbar-input" type="text" placeholder="Table name" style="width:130px;"/>
+  </div>
+  <div class="spacer"></div>
+  <button class="t-btn primary">📋 Order Info</button>
+  <button class="t-btn ghost-danger">✕ Clear</button>
+  <button class="t-btn dark">⇄ Shift Close</button>
+  <button class="t-btn ghost-danger">✕ Cancel</button>
+  <button class="t-btn primary" style="background:#1A1A1A;border-color:#1A1A1A;">▶ Running</button>
+</div>
+
+<!-- MAIN LAYOUT -->
+<div class="main">
+
+  <!-- SIDENAV -->
+  <nav class="sidenav" id="sidenav"></nav>
+
+  <!-- ITEM GRID -->
+  <div class="content">
+    <div class="content-header">
+      <div>
+        <div class="section-title" id="section-title">Dine – Vegetarian</div>
+        <div class="section-sub" id="section-sub">13 items</div>
+      </div>
+      <div class="search-bar">
+        <span class="icon">🔍</span>
+        <input type="text" placeholder="Filter items…" id="grid-search" oninput="filterGrid(this.value)"/>
+      </div>
+    </div>
+    <div class="grid" id="item-grid"></div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div class="rightpanel">
+    <div class="rp-top">
+      <div class="order-tabs">
+        <button class="tab">Dine-In</button>
+        <button class="tab">Online</button>
+        <button class="tab active">Express</button>
+        <button class="tab">Takeaway</button>
+      </div>
+      <div class="rp-meta">
+        <button class="meta-btn">👤 Waiter</button>
+        <button class="meta-btn">📝 Note</button>
+      </div>
+      <div class="rp-divider"></div>
+    </div>
+
+    <div class="order-col-head">
+      <span>Item</span>
+      <span style="text-align:center;">Qty</span>
+      <span style="text-align:right;">Amt</span>
+    </div>
+
+    <div class="order-list" id="order-list">
+      <div class="order-empty">
+        <div class="order-empty-icon">🛒</div>
+        <div class="order-empty-text">No items yet</div>
+        <div class="order-empty-sub">Tap any item to add it to the order</div>
+      </div>
+    </div>
+
+    <div class="order-footer" id="order-footer" style="display:none;">
+      <div class="total-row">
+        <span class="total-label">Subtotal</span>
+        <span class="total-val" id="subtotal">₹0</span>
+      </div>
+      <div class="total-row">
+        <span class="total-label">Tax (5%)</span>
+        <span class="total-val" id="tax">₹0</span>
+      </div>
+      <div class="grand-row">
+        <span class="grand-label">Total</span>
+        <span class="grand-val" id="grand-total">₹0</span>
+      </div>
+    </div>
+
+    <div class="panel-actions">
+      <button class="btn-clear-ord" onclick="clearOrder()">✕ Clear</button>
+      <button class="btn-place-ord">Place Order →</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const categories = [
+  {name:"Dine - Vegetarian",count:13,icon:"🥗"},
+  {name:"Dine - Soup",count:9,icon:"🍲"},
+  {name:"Dine - Mutton Main Course",count:7,icon:"🍖"},
+  {name:"Dine - Starters",count:26,icon:"🍢"},
+  {name:"Dine - Salad",count:16,icon:"🥙"},
+  {name:"Dine - Chicken & Sea Food",count:15,icon:"🍗"},
+  {name:"Dine - Asian Wok",count:31,icon:"🥘"},
+  {name:"Dine - Continental",count:25,icon:"🍽"},
+  {name:"Dine - India Breads",count:11,icon:"🫓"},
+  {name:"Dine - Biryani And Pulav",count:18,icon:"🍚"},
+  {name:"Desserts",count:8,icon:"🍮"},
+  {name:"Fresh Juice And Moctails",count:17,icon:"🥤"},
+  {name:"Hot Beverage",count:11,icon:"☕"},
+  {name:"Outdoor - Snacks",count:23,icon:"🧆"},
+];
+
+const menuData = {
+  "Dine - Vegetarian":[
+    {n:"Baingan Da Bhurta",p:20},{n:"Bhindi Do -Pyaza",p:20},
+    {n:"Dal Makhani",p:30},{n:"Kadai Paneer",p:25},
+    {n:"Lasooni Dal Tadka",p:20},{n:"Lasooni Malai Palak",p:25},
+    {n:"Matar Paneer",p:25},{n:"Mix Veg Makhan Wala",p:25},
+    {n:"Palak Paneer",p:25},{n:"Paneer Butter Masala",p:25},
+    {n:"Sarson Da Saag",p:25},{n:"Veg Jhalfrezi",p:22},
+    {n:"Vegetable Kolahapuri",p:22},
+  ],
+  "Dine - Soup":[
+    {n:"Tomato Soup",p:15},{n:"Sweet Corn Soup",p:18},
+    {n:"Lemon Coriander Soup",p:16},{n:"Hot & Sour Soup",p:18},
+    {n:"Manchow Soup",p:20},{n:"Spinach Soup",p:15},
+    {n:"Mushroom Soup",p:18},{n:"Veg Clear Soup",p:14},
+    {n:"Minestrone Soup",p:20},
+  ],
+  "Dine - Starters":[
+    {n:"Paneer Tikka",p:30},{n:"Veg Seekh Kebab",p:28},
+    {n:"Hara Bhara Kebab",p:25},{n:"Veg Shawarma",p:22},
+    {n:"Aloo Tikki",p:18},{n:"Spring Rolls",p:20},
+    {n:"Dahi Ke Kebab",p:25},{n:"Corn Cheese Balls",p:22},
+    {n:"Paneer Pakora",p:18},{n:"Veg Cutlet",p:16},
+  ],
+  "Dine - Salad":[
+    {n:"Green Garden Salad",p:18},{n:"Caesar Salad",p:22},
+    {n:"Kachumber Salad",p:15},{n:"Pasta Salad",p:20},
+    {n:"Sprout Salad",p:16},{n:"Fruit Salad",p:22},
+  ],
+  "Dine - Chicken & Sea Food":[
+    {n:"Butter Chicken",p:35},{n:"Chicken Tikka Masala",p:38},
+    {n:"Chicken Biryani",p:32},{n:"Fish Curry",p:40},
+    {n:"Prawn Masala",p:45},{n:"Chicken Seekh Kebab",p:30},
+  ],
+  "Desserts":[
+    {n:"Gulab Jamun",p:20},{n:"Rasgulla",p:18},
+    {n:"Kheer",p:22},{n:"Ice Cream",p:25},
+    {n:"Jalebi",p:15},{n:"Halwa",p:20},
+    {n:"Phirni",p:22},{n:"Rasmalai",p:25},
+  ],
+  "Fresh Juice And Moctails":[
+    {n:"Fresh Lime Soda",p:12},{n:"Mango Shake",p:18},
+    {n:"Mixed Fruit Juice",p:16},{n:"Virgin Mojito",p:20},
+    {n:"Watermelon Juice",p:14},{n:"Pineapple Juice",p:15},
+    {n:"Blue Lagoon",p:22},{n:"Strawberry Mocktail",p:20},
+  ],
+  "Hot Beverage":[
+    {n:"Masala Chai",p:10},{n:"Filter Coffee",p:12},
+    {n:"Green Tea",p:15},{n:"Lemon Tea",p:12},
+    {n:"Black Coffee",p:14},{n:"Cappuccino",p:18},
+  ],
+};
+
+let currentCat = "Dine - Vegetarian";
+let order = {};
+let filterText = "";
+
+function getItems(cat) {
+  if (menuData[cat]) return menuData[cat].map(i => ({name:i.n, price:i.p}));
+  const c = categories.find(x => x.name === cat);
+  const n = Math.min(c ? c.count : 6, 10);
+  return Array.from({length:n}, (_,i) => ({name:`${cat.split('-').pop().trim()} Item ${i+1}`, price:15+i*3}));
+}
+
+function filterGrid(val) {
+  filterText = val.toLowerCase();
+  buildGrid();
+}
+
+function buildNav() {
+  const nav = document.getElementById('sidenav');
+  nav.innerHTML = '';
+  categories.forEach(c => {
+    const d = document.createElement('div');
+    d.className = 'nav-item' + (c.name === currentCat ? ' active' : '');
+    d.innerHTML = `
+      <div class="nav-icon-wrap">${c.icon}</div>
+      <div class="nav-text">
+        <div class="nav-label">${c.name.replace('Dine - ','')}</div>
+      </div>
+      <span class="nav-badge">${c.count}</span>
+    `;
+    d.onclick = () => {
+      currentCat = c.name;
+      filterText = '';
+      document.getElementById('grid-search').value = '';
+      document.getElementById('top-search').value = '';
+      buildNav();
+      buildGrid();
+    };
+    nav.appendChild(d);
+  });
+}
+
+function buildGrid() {
+  const cat = categories.find(c => c.name === currentCat);
+  document.getElementById('section-title').textContent = currentCat.replace('Dine - ','');
+  
+  const allItems = getItems(currentCat);
+  const items = filterText ? allItems.filter(i => i.name.toLowerCase().includes(filterText)) : allItems;
+  document.getElementById('section-sub').textContent = items.length + ' items';
+
+  const grid = document.getElementById('item-grid');
+  grid.innerHTML = '';
+
+  if (items.length === 0) {
+    grid.innerHTML = `<div style="grid-column:1/-1;padding:40px;text-align:center;color:var(--text-muted);">
+      <div style="font-size:28px;margin-bottom:8px;">🔍</div>
+      <div style="font-weight:600;font-size:13px;">No items match "${filterText}"</div>
+    </div>`;
+    return;
+  }
+
+  items.forEach(item => {
+    const inO = !!order[item.name];
+    const qty = inO ? order[item.name].qty : 0;
+    const card = document.createElement('div');
+    card.className = 'item-card' + (inO ? ' in-order' : '');
+    card.innerHTML = `
+      ${inO ? `<div class="qty-pill">${qty}</div>` : ''}
+      <div class="card-top">
+        <div class="veg-indicator"><div class="veg-dot-inner"></div></div>
+        <div class="item-name">${item.name}</div>
+      </div>
+      <div class="card-footer">
+        <div class="item-price"><span class="item-price-sym">₹</span>${item.price}</div>
+        <div class="add-indicator">${inO ? '✓' : '+'}</div>
+      </div>
+    `;
+    card.onclick = () => addItem(item);
+    grid.appendChild(card);
+  });
+}
+
+function addItem(item) {
+  if (order[item.name]) order[item.name].qty++;
+  else order[item.name] = {price: item.price, qty: 1};
+  buildGrid();
+  renderOrder();
+}
+
+function changeQty(name, d) {
+  if (!order[name]) return;
+  order[name].qty += d;
+  if (order[name].qty <= 0) delete order[name];
+  buildGrid();
+  renderOrder();
+}
+
+function removeItem(name) {
+  delete order[name];
+  buildGrid();
+  renderOrder();
+}
+
+function clearOrder() {
+  order = {};
+  buildGrid();
+  renderOrder();
+}
+
+function renderOrder() {
+  const list = document.getElementById('order-list');
+  const footer = document.getElementById('order-footer');
+  const entries = Object.entries(order);
+
+  if (entries.length === 0) {
+    list.innerHTML = `<div class="order-empty">
+      <div class="order-empty-icon">🛒</div>
+      <div class="order-empty-text">No items yet</div>
+      <div class="order-empty-sub">Tap any item to add to order</div>
+    </div>`;
+    footer.style.display = 'none';
+    return;
+  }
+
+  footer.style.display = 'block';
+  list.innerHTML = '';
+  let sub = 0;
+
+  entries.forEach(([name, {price, qty}]) => {
+    const amt = price * qty;
+    sub += amt;
+    const safe = name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    const row = document.createElement('div');
+    row.className = 'order-row';
+    row.innerHTML = `
+      <div class="row-name-wrap">
+        <button class="del-btn" onclick="removeItem('${safe}')">✕</button>
+        <span class="row-name" title="${name}">${name}</span>
+      </div>
+      <div class="qty-ctrl">
+        <button class="qbtn" onclick="changeQty('${safe}',-1)">−</button>
+        <span class="qval">${qty}</span>
+        <button class="qbtn" onclick="changeQty('${safe}',1)">+</button>
+      </div>
+      <div class="row-amt">₹${amt}</div>
+    `;
+    list.appendChild(row);
+  });
+
+  const tax = Math.round(sub * 0.05);
+  const grand = sub + tax;
+  document.getElementById('subtotal').textContent = '₹' + sub;
+  document.getElementById('tax').textContent = '₹' + tax;
+  document.getElementById('grand-total').textContent = '₹' + grand;
+}
+
+// Tab switching
+document.querySelectorAll('.tab').forEach(t => {
+  t.onclick = () => {
+    document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+  };
+});
+
+// Init with some order items
+order = {
+  "Baingan Da Bhurta": {price:20, qty:1},
+  "Dal Makhani": {price:30, qty:1},
+  "Sarson Da Saag": {price:25, qty:1},
+};
+
+buildNav();
+buildGrid();
+renderOrder();
+</script>
+</body>
+</html>

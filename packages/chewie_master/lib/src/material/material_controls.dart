@@ -152,24 +152,27 @@ class _MaterialControlsState extends State<MaterialControls>
               children: [
                 // 🔙 Back button on the LEFT
                 GestureDetector(
+                  // onTap: () {
+                  //   if (chewieController.isFullScreen) {
+                  //     chewieController.exitFullScreen();
+                  //   } else {
+                  //     Navigator.of(context).maybePop();
+                  //   }
+                  // },
                   onTap: () {
-                    if (chewieController.isFullScreen) {
-                      chewieController.exitFullScreen();
-                    } else {
-                      Navigator.of(context).maybePop();
-                    }
-                  },
+  Navigator.of(context).pop();
+},
                   child: Container(
       padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
         color: Colors.black12,
         borderRadius: BorderRadius.circular(50),
       ),
-      child: const Icon(
-        Icons.arrow_back,
-        color: Colors.white60,
-        size: 22,
-      ),
+      child: Icon(
+    Icons.arrow_back_ios_new,
+    color: Colors.white,
+    size: 18,
+  ),
     ),
                  
                 ),

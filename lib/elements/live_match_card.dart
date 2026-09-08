@@ -59,7 +59,7 @@ class _LiveMatchCardState extends State<LiveMatchCard> {
 
   late final DateTime _safeEndTime;
 
-  static const Duration _checkInterval = Duration(seconds: 5);
+  static const Duration _checkInterval = Duration(seconds: 1);
 
   @override
   void initState() {
@@ -90,13 +90,17 @@ class _LiveMatchCardState extends State<LiveMatchCard> {
     super.dispose();
   }
 
-  void _startTimer() {
-    _timer?.cancel();
-    _timer = Timer.periodic(_checkInterval, (_) {
-      if (!mounted) return;
-      _evaluateLiveStatus();
-    });
-  }
+void _startTimer() {
+  _timer?.cancel();
+
+  _timer = Timer.periodic(_checkInterval, (_) {
+    if (!mounted) return;
+
+    setState(() {});
+
+    _evaluateLiveStatus();
+  });
+}
 
   /// 🧠 CATEGORY BASED FALLBACK DURATION
   Duration _fallbackDuration() {
@@ -222,6 +226,48 @@ class _LiveMatchCardState extends State<LiveMatchCard> {
       ),
     );
   }
+ String _countdownText() {
+  final diff =
+      widget.matchStartTime.toLocal().difference(DateTime.now());
+
+  if (diff.isNegative) {
+    return "00H : 00M : 00S";
+  }
+
+  final hours = diff.inHours;
+  final mins = diff.inMinutes.remainder(60);
+  final secs = diff.inSeconds.remainder(60);
+
+  return "${hours.toString().padLeft(2, '0')}H : "
+      "${mins.toString().padLeft(2, '0')}M : "
+      "${secs.toString().padLeft(2, '0')}S";
+}
+
+Widget _countdownBadge() {
+  return Container(
+    padding: const EdgeInsets.symmetric(
+      horizontal: 8,
+      vertical: 4,
+    ),
+    decoration: BoxDecoration(
+      color:  Color.fromARGB(255, 155, 238, 2).withOpacity(.12),
+      borderRadius: BorderRadius.circular(90),
+      border: Border.all(
+        color: Color.fromARGB(255, 155, 238, 2).withOpacity(.4),
+      ),
+    ),
+    child:  Text(
+    _countdownText(),
+    key: ValueKey(_countdownText()),
+    style: const TextStyle(
+      fontSize: 10,
+      fontWeight: FontWeight.w900,
+      color:  Color.fromARGB(255, 155, 238, 2)
+    ),
+  ),
+);
+  
+}
 
   @override
   Widget build(BuildContext context) {
@@ -275,22 +321,31 @@ class _LiveMatchCardState extends State<LiveMatchCard> {
               ],
             ),
             const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(child: _TeamBlock(team: widget.teamA)),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 20),
-                  child: Text(
-                    "VS",
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                Expanded(child: _TeamBlock(team: widget.teamB)),
-              ],
+           Row(
+  children: [
+    Expanded(child: _TeamBlock(team: widget.teamA)),
+
+    Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _countdownBadge(),
+          const SizedBox(height: 5),
+          const Text(
+            "VS",
+            style: TextStyle(
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
             ),
+          ),
+        ],
+      ),
+    ),
+
+    Expanded(child: _TeamBlock(team: widget.teamB)),
+  ],
+)
           ],
         ),
       ),
